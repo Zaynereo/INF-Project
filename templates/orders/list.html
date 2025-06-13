@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders - Indian Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">My Orders</h2>
+            
+            {% if orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order #</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.order_date.strftime('%b %d, %Y %I:%M %p') }}</td>
+                                <td>{{ order.items|length }} item(s)</td>
+                                <td>${{ "%.2f"|format(order.total_amount) }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if order.status == 'completed' else 'warning' if order.status == 'processing' else 'danger' }}">
+                                        {{ order.status|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('orders.order_detail', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                                        View Details
+                                    </a>
+                                    {% if order.status == 'pending' %}
+                                        <a href="{{ url_for('orders.cancel_order', order_id=order.id) }}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('Are you sure you want to cancel this order?')">
+                                            Cancel
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You haven't placed any orders yet. 
+                    <a href="{{ url_for('products.list_products') }}" class="alert-link">Start shopping</a>!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - Indian Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <div class="error-404">
+                <h1 class="display-1 fw-bold text-success">404</h1>
+                <h2 class="mb-4">Oops! Page Not Found</h2>
+                <p class="lead mb-4">The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="{{ url_for('main.home') }}" class="btn btn-success btn-lg px-4">
+                        <i class="fas fa-home me-2"></i>Go to Homepage
+                    </a>
+                    <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-secondary btn-lg px-4">
+                        <i class="fas fa-shopping-basket me-2"></i>Browse Products
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-404 {
+    padding: 3rem 2rem;
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.05);
+}
+
+.error-404 h1 {
+    font-size: 8rem;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #198754, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.error-404 h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .error-404 h1 {
+        font-size: 5rem;
+    }
+    
+    .error-404 h2 {
+        font-size: 2rem;
+    }
+    
+    .d-flex {
+        flex-direction: column;
+        gap: 1rem !important;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

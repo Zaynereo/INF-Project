@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Indian Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Login</h2>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('auth.login') }}">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.identifier.label(class="form-label") }}
+                            {{ form.identifier(class="form-control" + (" is-invalid" if form.identifier.errors else ""), placeholder="Enter your username or email") }}
+                            {% for error in form.identifier.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                            {% for error in form.password.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3 form-check">
+                            {{ form.remember(class="form-check-input") }}
+                            {{ form.remember.label(class="form-check-label") }}
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                    
+                    <div class="mt-3 text-center">
+                        <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Indian Grocery Store{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section py-5 bg-light">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Fresh Indian Groceries Delivered to Your Doorstep</h1>
+                <p class="lead mb-4">Discover authentic Indian spices, lentils, rice, and more at the best prices in Singapore.</p>
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{{ url_for('products.list_products') }}" class="btn btn-success btn-lg px-4 me-md-2">
+                        <i class="fas fa-shopping-basket me-2"></i>Shop Now
+                    </a>
+                    <a href="#featured" class="btn btn-outline-secondary btn-lg px-4">
+                        <i class="fas fa-star me-2"></i>Featured Products
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <img src="{{ url_for('static', filename='images/hero-image.jpg') }}" alt="Indian Groceries" class="img-fluid rounded shadow">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Shop by Category</h2>
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-md-4 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm hover-shadow transition">
+                    <div class="card-body text-center">
+                        <div class="icon-lg bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-pepper-hot text-success"></i>
+                        </div>
+                        <h5 class="card-title">{{ category }}</h5>
+                        <a href="{{ url_for('products.list_products', category=category) }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section id="featured" class="py-5 bg-light">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Featured Products</h2>
+            <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-success">View All</a>
+        </div>
+        
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 product-card">
+                    <div class="position-relative">
+                        {% set placeholder_url = url_for('static', filename='images/placeholder.jpg') %}
+                        <img src="{{ url_for('static', filename='images/products/' ~ product.product_id ~ '.jpg') }}" 
+                             class="card-img-top" alt="{{ product.name }}" 
+                             onerror="this.onerror=null; this.setAttribute('src', '{{ placeholder_url }}');">
+                        {% if product.stock_level <= 0 %}
+                        <div class="position-absolute top-0 start-0 bg-danger text-white px-2 py-1 small">Out of Stock</div>
+                        {% endif %}
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="text-muted small mb-2">{{ product.brand }}</p>
+                        <div class="mt-auto">
+                            <p class="h5 text-success mb-2">${{ "%.2f"|format(product.price) }} <small class="text-muted">/ {{ product.unit }}</small></p>
+                            {% if product.stock_level > 0 %}
+                            <form action="{{ url_for('cart.add_item', product_id=product.product_id) }}" method="post" class="add-to-cart-form">
+                                <div class="input-group mb-2">
+                                    <input type="number" name="quantity" class="form-control form-control-sm" value="1" min="1" max="{{ product.stock_level }}">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="fas fa-cart-plus"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            {% else %}
+                            <button class="btn btn-outline-secondary btn-sm w-100" disabled>Out of Stock</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <a href="{{ url_for('products.product_detail', product_id=product.product_id) }}" class="stretched-link"></a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose Us -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Why Choose Us</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="text-center p-4">
+                    <div class="icon-lg bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h5>Fast Delivery</h5>
+                    <p class="text-muted mb-0">Same day delivery for orders before 2pm</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-4">
+                    <div class="icon-lg bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    <h5>Fresh & Quality</h5>
+                    <p class="text-muted mb-0">100% authentic and premium quality products</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-4">
+                    <div class="icon-lg bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <h5>24/7 Support</h5>
+                    <p class="text-muted mb-0">Dedicated customer support team</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">What Our Customers Say</h2>
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="text-center px-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-quote-left fa-2x text-success opacity-25"></i>
+                                </div>
+                                <p class="lead mb-4">"The quality of spices is amazing! I've been a customer for over a year now and never been disappointed."</p>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <img src="https://randomuser.me/api/portraits/women/32.jpg" class="rounded-circle me-3" width="50" height="50" alt="Customer">
+                                    <div class="text-start">
+                                        <h6 class="mb-0">Priya Sharma</h6>
+                                        <small class="text-muted">Regular Customer</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="text-center px-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-quote-left fa-2x text-success opacity-25"></i>
+                                </div>
+                                <p class="lead mb-4">"Fast delivery and excellent customer service. The freshness of the vegetables is always top-notch!"</p>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <img src="https://randomuser.me/api/portraits/men/45.jpg" class="rounded-circle me-3" width="50" height="50" alt="Customer">
+                                    <div class="text-start">
+                                        <h6 class="mb-0">Raj Patel</h6>
+                                        <small class="text-muted">Home Chef</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon bg-success rounded-circle" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon bg-success rounded-circle" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter -->
+<section class="py-5 bg-success text-white">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h2 class="mb-4">Subscribe to Our Newsletter</h2>
+                <p class="lead mb-4">Get the latest updates on new products and upcoming sales</p>
+                <form class="row g-2 justify-content-center">
+                    <div class="col-md-8">
+                        <input type="email" class="form-control form-control-lg" placeholder="Enter your email">
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-light btn-lg px-4">Subscribe</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add to cart with AJAX
+$(document).ready(function() {
+    $('.add-to-cart-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const url = form.attr('action');
+        const data = form.serialize();
+        
+        $.post(url, data, function(response) {
+            if (response.success) {
+                // Update cart count
+                $('.cart-count').text(response.cart_count);
+                
+                // Show success message
+                const toast = `
+                    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="toast-header bg-success text-white">
+                                <strong class="me-auto">Success</strong>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                            <div class="toast-body">
+                                ${response.message}
+                            </div>
+                        </div>
+                    </div>`;
+                
+                $('body').append(toast);
+                
+                // Remove toast after 3 seconds
+                setTimeout(() => {
+                    $('.toast').toast('hide');
+                }, 3000);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

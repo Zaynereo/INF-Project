@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - Indian Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Your Shopping Cart</h2>
+    
+    {% if not cart_items %}
+        <div class="alert alert-info">
+            Your cart is empty. <a href="{{ url_for('products.list_products') }}">Continue shopping</a>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ item.Product.image_url or url_for('static', filename='img/placeholder.png') }}" 
+                                         alt="{{ item.Product.name }}" 
+                                         class="img-thumbnail me-3" 
+                                         style="width: 80px; height: 80px; object-fit: cover;">
+                                    <div>
+                                        <h5 class="mb-1">{{ item.Product.name }}</h5>
+                                        <p class="text-muted mb-0">{{ item.Product.brand }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${{ '%.2f'|format(item.Product.price) }}</td>
+                            <td>
+                                <div class="input-group" style="width: 120px;">
+                                    <form action="{{ url_for('cart.update_item', item_id=item.CartItem.id) }}" method="POST" class="d-flex">
+                                        <input type="number" 
+                                               name="quantity" 
+                                               value="{{ item.CartItem.quantity }}" 
+                                               min="1" 
+                                               class="form-control form-control-sm text-center"
+                                               onchange="this.form.submit()">
+                                    </form>
+                                </div>
+                            </td>
+                            <td>${{ '%.2f'|format(item.Product.price * item.CartItem.quantity) }}</td>
+                            <td>
+                                <form action="{{ url_for('cart.remove_item', item_id=item.CartItem.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                        <td colspan="2"><strong>${{ '%.2f'|format(total) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Continue Shopping
+            </a>
+            <a href="{{ url_for('checkout.checkout') }}" class="btn btn-primary">
+                Proceed to Checkout <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Auto-submit quantity update after 1 second of inactivity
+let timeout;
+document.querySelectorAll('input[name="quantity"]').forEach(input => {
+    input.addEventListener('change', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            this.form.submit();
+        }, 1000);
+    });
+});
+</script>
+{% endblock %}

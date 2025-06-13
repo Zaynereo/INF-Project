@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+  <h2>📦 Product List</h2>
+  <table class="table table-bordered table-hover">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th><th>Name</th><th>Brand</th><th>Category</th><th>Price ($)</th><th>Stock</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in products %}
+      <tr>
+        <td>{{ product.product_id }}</td>
+        <td>{{ product.name }}</td>
+        <td>{{ product.brand }}</td>
+        <td>{{ product.category }}</td>
+        <td>{{ product.price }}</td>
+        <td>{{ product.stock_level }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2 class="mt-5">📝 Product Reviews</h2>
+  {% for review in reviews %}
+    <div class="border rounded p-3 mb-3">
+      <strong>{{ review.user }}</strong> rated 
+      <strong>{{ review.rating }}</strong>/5
+      <p>{{ review.comment }}</p>
+    </div>
+  {% endfor %}
+{% endblock %}
