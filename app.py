@@ -27,7 +27,7 @@ def create_app():
     
     # Configure the SQLAlchemy part of the app instance
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-123')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'mysql+pymysql://root:Iphone112019@localhost/grocerydb')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'mysql+pymysql://root:Ngkh2002@localhost:3307/grocerydb')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_recycle': 280,
