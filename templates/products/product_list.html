@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Our Products</h1>
+    
+    {% if products %}
+        <div class="row">
+            {% for product in products %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">No Image</span>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text">{{ product.description|truncatewords:20 }}</p>
+                            
+                            <div class="mb-2">
+                                <span class="badge bg-primary">{{ product.category.name }}</span>
+                                <span class="badge bg-secondary">{{ product.brand.name }}</span>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="h5 text-success">${{ product.price }}</span>
+                                <span class="text-muted">{{ product.unit }}</span>
+                            </div>
+                            
+                            <div class="mt-2">
+                                {% if product.is_in_stock %}
+                                    <span class="text-success">✓ In Stock ({{ product.stock_level }})</span>
+                                {% else %}
+                                    <span class="text-danger">✗ Out of Stock</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'products:product_detail' product.pk %}" class="btn btn-outline-primary btn-sm">
+                                    View Details
+                                </a>
+                                {% if product.is_in_stock %}
+                                    <button class="btn btn-success btn-sm add-to-cart" data-product-id="{{ product.pk }}">
+                                        Add to Cart
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>
+                                        Out of Stock
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <nav aria-label="Product pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">&laquo; First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+        
+    {% else %}
+        <div class="alert alert-info">
+            <h4>No products found</h4>
+            <p>We're currently updating our inventory. Please check back soon!</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Sidebar with filters -->
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Categories</h5>
+                </div>
+                <div class="card-body">
+                    {% if categories %}
+                        <ul class="list-unstyled">
+                            {% for category in categories %}
+                                <li>
+                                    <a href="{% url 'products:category_products' category.name|slugify %}" class="text-decoration-none">
+                                        {{ category.name }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No categories available</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Brands</h5>
+                </div>
+                <div class="card-body">
+                    {% if brands %}
+                        <ul class="list-unstyled">
+                            {% for brand in brands %}
+                                <li>
+                                    <a href="{% url 'products:brand_products' brand.name|slugify %}" class="text-decoration-none">
+                                        {{ brand.name }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No brands available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <!-- Search form -->
+            <form method="get" action="{% url 'products:product_search' %}" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search products..." value="{{ request.GET.q }}">
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add to cart functionality (basic implementation)
+document.addEventListener('DOMContentLoaded', function() {
+    const addToCartButtons = document.querySelectorAll('.add-to-cart');
+    
+    addToCartButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const button = this;
+            
+            // Disable button to prevent double-clicking
+            button.disabled = true;
+            button.textContent = 'Adding...';
+            
+            // Send AJAX request to add to cart
+            fetch(`/cart/ajax/add/${productId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `quantity=1`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.textContent = 'Added!';
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-success');
+                    
+                    // Show success message
+                    showMessage(data.message, 'success');
+                } else {
+                    button.textContent = 'Error';
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-danger');
+                    
+                    // Show error message
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                button.textContent = 'Error';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-danger');
+            })
+            .finally(() => {
+                // Re-enable button after 2 seconds
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = 'Add to Cart';
+                    button.classList.remove('btn-danger');
+                    button.classList.add('btn-success');
+                }, 2000);
+            });
+        });
+    });
+});
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Helper function to show messages
+function showMessage(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at the top of the container
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %} 

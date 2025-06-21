@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile - Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-user-circle fa-4x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">{{ user.username }}</h5>
+                    <p class="text-muted">{{ user.email }}</p>
+                    <p class="small text-muted">Member since {{ user.date_joined|date:"M Y" }}</p>
+                    
+                    <a href="{% url 'accounts:profile_edit' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit me-1"></i>Edit Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'cart:cart_detail' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-cart me-2"></i>My Cart
+                    </a>
+                    <a href="{% url 'accounts:order_history' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-history me-2"></i>Order History
+                    </a>
+                    <a href="{% url 'accounts:wishlist' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-heart me-2"></i>Wishlist
+                    </a>
+                    <a href="{% url 'accounts:address_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-map-marker-alt me-2"></i>Addresses
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <!-- Welcome Section -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4>Welcome back, {{ user.first_name|default:user.username }}!</h4>
+                    <p class="text-muted">Here's what's happening with your account.</p>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Orders</h5>
+                    <a href="{% url 'accounts:order_history' %}" class="btn btn-outline-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Total</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in recent_orders %}
+                                        <tr>
+                                            <td>{{ order.order_number }}</td>
+                                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ order.status_color }}">{{ order.get_status_display }}</span>
+                                            </td>
+                                            <td>${{ order.total_amount }}</td>
+                                            <td>
+                                                <a href="{% url 'accounts:order_detail' order.id %}" class="btn btn-outline-primary btn-sm">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-shopping-bag fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No orders yet</p>
+                            <a href="{% url 'products:product_list' %}" class="btn btn-primary">Start Shopping</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Wishlist -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Wishlist</h5>
+                    <a href="{% url 'accounts:wishlist' %}" class="btn btn-outline-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if wishlist_items %}
+                        <div class="row">
+                            {% for item in wishlist_items %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        {% if item.product.image %}
+                                            <img src="{{ item.product.image.url }}" class="card-img-top" alt="{{ item.product.name }}">
+                                        {% else %}
+                                            <img src="{% static 'images/placeholder-product.jpg' %}" class="card-img-top" alt="Product placeholder">
+                                        {% endif %}
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ item.product.name }}</h6>
+                                            <p class="card-text text-primary">${{ item.product.price }}</p>
+                                            <div class="d-flex gap-1">
+                                                <form method="post" action="{% url 'cart:add_to_cart' item.product.id %}" class="flex-grow-1">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="quantity" value="1">
+                                                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                                                        <i class="fas fa-cart-plus me-1"></i>Add to Cart
+                                                    </button>
+                                                </form>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="removeFromWishlist({{ item.product.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-heart fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">Your wishlist is empty</p>
+                            <a href="{% url 'products:product_list' %}" class="btn btn-primary">Browse Products</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Account Statistics -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-shopping-cart fa-2x text-primary mb-2"></i>
+                            <h5>{{ total_orders }}</h5>
+                            <p class="text-muted">Total Orders</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-heart fa-2x text-danger mb-2"></i>
+                            <h5>{{ wishlist_count }}</h5>
+                            <p class="text-muted">Wishlist Items</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-map-marker-alt fa-2x text-success mb-2"></i>
+                            <h5>{{ address_count }}</h5>
+                            <p class="text-muted">Saved Addresses</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function removeFromWishlist(productId) {
+    if (confirm('Remove this item from your wishlist?')) {
+        fetch(`/cart/wishlist/remove/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error removing from wishlist');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing from wishlist');
+        });
+    }
+}
+</script>
+{% endblock %} 

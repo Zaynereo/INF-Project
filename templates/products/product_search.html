@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Search Products - Grocery Store{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Search Products</h1>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <form method="get" action="{% url 'products:product_search' %}" class="card">
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-control-lg" name="q" value="{{ query }}" placeholder="Search for products, categories, or brands...">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    {% if query %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <h4>Search Results for "{{ query }}"</h4>
+                {% if products %}
+                    <p class="text-muted">{{ products|length }} product{{ products|length|pluralize }} found</p>
+                {% else %}
+                    <p class="text-muted">No products found</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if products %}
+            <!-- Products Grid -->
+            <div class="row">
+                {% for product in products %}
+                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                        <div class="card h-100 product-card">
+                            <!-- Product Image -->
+                            <div class="product-image-container">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                                {% else %}
+                                    <img src="{% static 'images/placeholder-product.jpg' %}" class="card-img-top" alt="Product placeholder">
+                                {% endif %}
+                                
+                                <!-- Quick Actions -->
+                                <div class="product-actions">
+                                    <a href="{% url 'products:product_detail' product.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="addToWishlist({{ product.id }})">
+                                        <i class="fas fa-heart"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Product Info -->
+                            <div class="card-body d-flex flex-column">
+                                <h6 class="card-title">{{ product.name }}</h6>
+                                
+                                <!-- Brand and Category -->
+                                <div class="mb-2">
+                                    <small class="text-muted">{{ product.brand.name }} • {{ product.category.name }}</small>
+                                </div>
+
+                                <!-- Price -->
+                                <div class="mt-auto">
+                                    <h5 class="text-primary mb-2">${{ product.price }}</h5>
+                                    <small class="text-muted">per {{ product.unit }}</small>
+                                </div>
+
+                                <!-- Stock Status -->
+                                <div class="mt-2">
+                                    {% if product.stock_level > 0 %}
+                                        <span class="badge bg-success">In Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Add to Cart Button -->
+                                {% if product.stock_level > 0 %}
+                                    <form method="post" action="{% url 'cart:add_to_cart' product.id %}" class="mt-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-cart-plus me-1"></i>Add to Cart
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm w-100 mt-3" disabled>
+                                        Out of Stock
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <nav aria-label="Search results pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&page={{ page_obj.paginator.num_pages }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+
+        {% else %}
+            <!-- No Results -->
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4>No products found</h4>
+                <p class="text-muted">Try adjusting your search terms or browse our categories below.</p>
+                
+                <!-- Suggested Categories -->
+                <div class="row mt-4">
+                    <div class="col-md-8 mx-auto">
+                        <h5>Popular Categories</h5>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                            {% for category in categories %}
+                                <a href="{% url 'products:category_products' category.name|slugify %}" class="btn btn-outline-primary btn-sm">
+                                    {{ category.name }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Search Suggestions -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                        <h4>Search for Products</h4>
+                        <p class="text-muted">Enter keywords to find products, categories, or brands</p>
+                        
+                        <!-- Popular Searches -->
+                        <div class="mt-4">
+                            <h6>Popular Searches:</h6>
+                            <div class="d-flex flex-wrap justify-content-center gap-2">
+                                <a href="?q=fruits" class="btn btn-outline-secondary btn-sm">Fruits</a>
+                                <a href="?q=vegetables" class="btn btn-outline-secondary btn-sm">Vegetables</a>
+                                <a href="?q=dairy" class="btn btn-outline-secondary btn-sm">Dairy</a>
+                                <a href="?q=bakery" class="btn btn-outline-secondary btn-sm">Bakery</a>
+                                <a href="?q=beverages" class="btn btn-outline-secondary btn-sm">Beverages</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function addToWishlist(productId) {
+    fetch(`/cart/wishlist/add/${productId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Added to wishlist!');
+        } else {
+            alert('Error adding to wishlist');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding to wishlist');
+    });
+}
+</script>
+
+<style>
+.product-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.product-image-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.product-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.product-card:hover .product-actions {
+    opacity: 1;
+}
+</style>
+{% endblock %} 
