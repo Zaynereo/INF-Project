@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from products.models import Category, SubCategory, Brand, Product
-from orders.models import Supplier
+from products.models import Category, SubCategory, Brand, Product, Supplier
 from django.utils import timezone
 from decimal import Decimal
 
@@ -52,7 +51,6 @@ class Command(BaseCommand):
             subcategory, created = SubCategory.objects.get_or_create(
                 name=subcat_data['name'],
                 category=categories[subcat_data['category']],
-                defaults={'description': f'{subcat_data["name"]} products'}
             )
             subcategories[f"{subcat_data['category']} - {subcat_data['name']}"] = subcategory
             if created:
@@ -60,23 +58,22 @@ class Command(BaseCommand):
         
         # Create brands
         brands_data = [
-            {'name': 'Sri Sri Ayurveda', 'description': 'Traditional Ayurvedic products'},
-            {'name': 'Mastercook', 'description': 'Kitchen and cooking essentials'},
-            {'name': 'Nakoda', 'description': 'Quality household products'},
-            {'name': 'Oxy', 'description': 'Personal care products'},
-            {'name': 'Bionova', 'description': 'Natural and organic products'},
-            {'name': 'Aroma Treasures', 'description': 'Aromatherapy and wellness products'},
-            {'name': 'Graminway', 'description': 'Traditional and gourmet foods'},
-            {'name': 'Murginns', 'description': 'Premium dairy products'},
-            {'name': 'NUTRASHIL', 'description': 'Health and nutrition supplements'},
-            {'name': 'StBotanica', 'description': 'Natural beauty and hair care'},
+            {'name': 'Sri Sri Ayurveda'},
+            {'name': 'Mastercook'},
+            {'name': 'Nakoda'},
+            {'name': 'Oxy'},
+            {'name': 'Bionova'},
+            {'name': 'Aroma Treasures'},
+            {'name': 'Graminway'},
+            {'name': 'Murginns'},
+            {'name': 'NUTRASHIL'},
+            {'name': 'StBotanica'},
         ]
         
         brands = {}
         for brand_data in brands_data:
             brand, created = Brand.objects.get_or_create(
-                name=brand_data['name'],
-                defaults={'description': brand_data['description']}
+                name=brand_data['name']
             )
             brands[brand_data['name']] = brand
             if created:
@@ -89,100 +86,120 @@ class Command(BaseCommand):
                 'category': 'Beauty & Hygiene',
                 'sub_category': 'Hair Care',
                 'brand': 'Sri Sri Ayurveda',
-                'price': Decimal('220.00'),
+                'market_price': Decimal('220.00'),
+                'sale_price': Decimal('220.00'),
                 'unit': 'ml',
                 'stock_level': 100,
-                'description': 'Natural garlic oil for hair care and growth'
+                'description': 'Natural garlic oil for hair care and growth',
+                'rating': Decimal('4.1')
             },
             {
                 'name': 'Water Bottle',
                 'category': 'Kitchen, Garden & Pets',
                 'sub_category': 'Storage',
                 'brand': 'Mastercook',
-                'price': Decimal('180.00'),
+                'market_price': Decimal('180.00'),
+                'sale_price': Decimal('180.00'),
                 'unit': 'pcs',
                 'stock_level': 50,
-                'description': 'Reusable water bottle for daily use'
+                'description': 'Reusable water bottle for daily use',
+                'rating': Decimal('2.3')
             },
             {
                 'name': 'Cereal Jar',
                 'category': 'Cleaning & Household',
                 'sub_category': 'Storage',
                 'brand': 'Nakoda',
-                'price': Decimal('149.00'),
+                'market_price': Decimal('176.00'),
+                'sale_price': Decimal('149.00'),
                 'unit': 'pcs',
                 'stock_level': 200,
-                'description': 'Airtight cereal storage jar'
+                'description': 'Airtight cereal storage jar',
+                'rating': Decimal('3.7')
             },
             {
                 'name': 'Face Wash',
                 'category': 'Beauty & Hygiene',
                 'sub_category': 'Skin Care',
                 'brand': 'Oxy',
-                'price': Decimal('110.00'),
+                'market_price': Decimal('110.00'),
+                'sale_price': Decimal('110.00'),
                 'unit': 'ml',
                 'stock_level': 80,
-                'description': 'Gentle face wash for daily cleansing'
+                'description': 'Gentle face wash for daily cleansing',
+                'rating': Decimal('5.0')
             },
             {
                 'name': 'Hand Sanitizer',
                 'category': 'Beauty & Hygiene',
                 'sub_category': 'Bath',
                 'brand': 'Bionova',
-                'price': Decimal('250.00'),
+                'market_price': Decimal('250.00'),
+                'sale_price': Decimal('250.00'),
                 'unit': 'ml',
                 'stock_level': 150,
-                'description': 'Alcohol-based hand sanitizer'
+                'description': 'Alcohol-based hand sanitizer',
+                'rating': Decimal('4.5')
             },
             {
                 'name': 'Smooth Skin Oil',
                 'category': 'Beauty & Hygiene',
                 'sub_category': 'Skin Care',
                 'brand': 'Aroma Treasures',
-                'price': Decimal('324.00'),
+                'market_price': Decimal('324.00'),
+                'sale_price': Decimal('324.00'),
                 'unit': 'ml',
                 'stock_level': 70,
-                'description': 'Natural oil for smooth and glowing skin'
+                'description': 'Natural oil for smooth and glowing skin',
+                'rating': Decimal('4.2')
             },
             {
                 'name': 'Salted Pumpkin',
                 'category': 'Gourmet & World Food',
                 'sub_category': 'Snacks',
                 'brand': 'Graminway',
-                'price': Decimal('180.00'),
+                'market_price': Decimal('180.00'),
+                'sale_price': Decimal('180.00'),
                 'unit': 'gm',
                 'stock_level': 40,
-                'description': 'Delicious salted pumpkin seeds'
+                'description': 'Delicious salted pumpkin seeds',
+                'rating': Decimal('4.9')
             },
             {
                 'name': 'Organic Tofu',
                 'category': 'Gourmet & World Food',
                 'sub_category': 'Dairy & Cheese',
                 'brand': 'Murginns',
-                'price': Decimal('85.14'),
+                'market_price': Decimal('90.00'),
+                'sale_price': Decimal('85.14'),
                 'unit': 'gm',
                 'stock_level': 90,
-                'description': 'Fresh organic tofu'
+                'description': 'Fresh organic tofu',
+                'rating': Decimal('3.9')
             },
             {
                 'name': 'Wheat Grass Powder',
                 'category': 'Gourmet & World Food',
                 'sub_category': 'Health Food',
                 'brand': 'NUTRASHIL',
-                'price': Decimal('261.00'),
+                'market_price': Decimal('261.00'),
+                'sale_price': Decimal('261.00'),
                 'unit': 'gm',
                 'stock_level': 60,
-                'description': 'Natural wheat grass powder for health'
+                'description': 'Natural wheat grass powder for health',
+                'rating': Decimal('4.0')
             },
             {
                 'name': 'Biotin Shampoo',
                 'category': 'Beauty & Hygiene',
                 'sub_category': 'Hair Care',
                 'brand': 'StBotanica',
-                'price': Decimal('1098.00'),
+                'market_price': Decimal('1098.00'),
+                'sale_price': Decimal('1098.00'),
                 'unit': 'ml',
                 'stock_level': 30,
-                'description': 'Biotin-enriched shampoo for hair growth'
+                'description': 'Biotin-enriched shampoo for hair growth',
+                'rating': Decimal('4.3')
             },
         ]
         
@@ -191,12 +208,14 @@ class Command(BaseCommand):
                 name=product_data['name'],
                 defaults={
                     'category': categories[product_data['category']],
-                    'sub_category': subcategories[f"{product_data['category']} - {product_data['sub_category']}"],
+                    'subcategory': subcategories[f"{product_data['category']} - {product_data['sub_category']}"],
                     'brand': brands[product_data['brand']],
-                    'price': product_data['price'],
+                    'market_price': product_data['market_price'],
+                    'sale_price': product_data['sale_price'],
                     'unit': product_data['unit'],
                     'stock_level': product_data['stock_level'],
                     'description': product_data['description'],
+                    'rating': product_data['rating'],
                 }
             )
             if created:

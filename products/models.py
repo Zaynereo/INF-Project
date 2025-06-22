@@ -1,172 +1,98 @@
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 from django.db import models
-from django.core.validators import MinValueValidator
-from django.contrib.auth.models import User
-
-
-class Category(models.Model):
-    """Product category model"""
-    name = models.CharField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name_plural = "Categories"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-
-class SubCategory(models.Model):
-    """Product subcategory model"""
-    name = models.CharField(max_length=100)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
-    description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name_plural = "Sub Categories"
-        unique_together = ['name', 'category']
-        ordering = ['category', 'name']
-
-    def __str__(self):
-        return f"{self.category.name} - {self.name}"
 
 
 class Brand(models.Model):
-    """Product brand model"""
-    name = models.CharField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    logo = models.ImageField(upload_to='brands/', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    brand_id = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=100)
 
     class Meta:
-        ordering = ['name']
+        managed = False
+        db_table = 'brand'
 
-    def __str__(self):
-        return self.name
+
+class Category(models.Model):
+    category_id = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=100)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'category'
+
+
+class Customer(models.Model):
+    customer_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    email = models.CharField(unique=True, max_length=100)
+    phone = models.CharField(max_length=25, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'customer'
+
+
+class Ordertable(models.Model):
+    order_id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(Customer, models.DO_NOTHING, blank=True, null=True)
+    order_date = models.DateTimeField(blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        managed = False
+        db_table = 'ordertable'
 
 
 class Product(models.Model):
-    """Product model corresponding to your existing Product table"""
+    product_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
-    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name='products')
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='products')
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    unit = models.CharField(max_length=50)
-    stock_level = models.IntegerField(default=0, validators=[MinValueValidator(0)])
-    description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    description = models.TextField(blank=True, null=True)
+    brand = models.ForeignKey(Brand, models.DO_NOTHING, blank=True, null=True)
+    category = models.ForeignKey(Category, models.DO_NOTHING, blank=True, null=True)
+    subcategory = models.ForeignKey('Subcategory', models.DO_NOTHING, blank=True, null=True)
+    market_price = models.DecimalField(max_digits=10, decimal_places=2)
+    sale_price = models.DecimalField(max_digits=10, decimal_places=2)
+    unit = models.CharField(max_length=50, blank=True, null=True)
+    stock_level = models.IntegerField()
+    rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
 
     class Meta:
-        ordering = ['name']
-        indexes = [
-            models.Index(fields=['name']),
-            models.Index(fields=['category']),
-            models.Index(fields=['brand']),
-            models.Index(fields=['price']),
-        ]
-
-    def __str__(self):
-        return self.name
-
-    @property
-    def is_in_stock(self):
-        """Check if product is in stock"""
-        return self.stock_level > 0
-
-    def get_display_price(self):
-        """Get formatted price with currency"""
-        return f"${self.price:.2f}"
+        managed = False
+        db_table = 'product'
 
 
-class ProductImage(models.Model):
-    """Additional product images"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='products/')
-    alt_text = models.CharField(max_length=255, blank=True)
-    is_primary = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+class Orderitem(models.Model):
+    order_item_id = models.AutoField(primary_key=True)
+    order = models.ForeignKey('Ordertable', models.DO_NOTHING, blank=True, null=True)
+    product = models.ForeignKey(Product, models.DO_NOTHING, blank=True, null=True)
+    quantity = models.IntegerField()
 
     class Meta:
-        ordering = ['-is_primary', 'created_at']
-
-    def __str__(self):
-        return f"{self.product.name} - {self.alt_text or 'Image'}"
+        managed = False
+        db_table = 'orderitem'
 
 
-class ProductReview(models.Model):
-    """Product reviews and ratings"""
-    RATING_CHOICES = [
-        (1, '1 Star'),
-        (2, '2 Stars'),
-        (3, '3 Stars'),
-        (4, '4 Stars'),
-        (5, '5 Stars'),
-    ]
-
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='product_reviews')
-    rating = models.IntegerField(choices=RATING_CHOICES)
-    title = models.CharField(max_length=255)
-    comment = models.TextField()
-    is_approved = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+class Subcategory(models.Model):
+    subcategory_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    category = models.ForeignKey(Category, models.DO_NOTHING)
 
     class Meta:
-        unique_together = ['product', 'user']
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.product.name} - {self.user.username} - {self.rating} stars"
+        managed = False
+        db_table = 'subcategory'
+        unique_together = (('name', 'category'),)
 
 
 class Supplier(models.Model):
-    """Supplier model corresponding to your existing Supplier table"""
+    supplier_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
-    contact = models.CharField(max_length=100)
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    address = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    contact = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-
-class Supply(models.Model):
-    """Supply model corresponding to your existing Supplies table"""
-    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supplies')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='supplies')
-    supply_date = models.DateField()
-    cost_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    quantity = models.IntegerField(validators=[MinValueValidator(1)])
-    total_cost = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name_plural = "Supplies"
-        ordering = ['-supply_date']
-
-    def __str__(self):
-        return f"{self.product.name} from {self.supplier.name} - {self.supply_date}"
-
-    def save(self, *args, **kwargs):
-        """Calculate total cost when saving"""
-        self.total_cost = self.cost_price * self.quantity
-        super().save(*args, **kwargs)
+        managed = False
+        db_table = 'supplier'
