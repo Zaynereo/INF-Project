@@ -1,7 +1,64 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.db.models import Q
 from django.db import connection
 from .models import Product, Category, Brand
+from django.contrib import messages
+
+# Decorator to check for admin status
+def admin_required(view_func):
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.session.get('is_admin'):
+            messages.error(request, "You do not have permission to access this page.")
+            return redirect('products:home')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+@admin_required
+def manage_products(request):
+    """
+    A view for admins to see all products with extra details, sorting, and search.
+    """
+    sort_by = request.GET.get('sort', 'name_asc')
+    search_query = request.GET.get('q', '')
+
+    params = []
+    
+    query = """
+        SELECT p.*, b.name as brand_name, c.name as category_name
+        FROM product p
+        LEFT JOIN brand b ON p.brand_id = b.brand_id
+        LEFT JOIN category c ON p.category_id = c.category_id
+    """
+    
+    if search_query:
+        query += " WHERE p.name ILIKE %s"
+        params.append(f'%{search_query}%')
+
+    # Sorting
+    if sort_by == 'stock_asc':
+        query += " ORDER BY p.stock_level ASC"
+    elif sort_by == 'stock_desc':
+        query += " ORDER BY p.stock_level DESC"
+    elif sort_by == 'price_asc':
+        query += " ORDER BY p.sale_price ASC"
+    elif sort_by == 'price_desc':
+        query += " ORDER BY p.sale_price DESC"
+    elif sort_by == 'name_desc':
+        query += " ORDER BY p.name DESC"
+    else:  # name_asc
+        query += " ORDER BY p.name ASC"
+
+    with connection.cursor() as cursor:
+        cursor.execute(query, params)
+        columns = [col[0] for col in cursor.description]
+        products = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    context = {
+        'products': products,
+        'sort_by': sort_by,
+        'search_query': search_query,
+    }
+    return render(request, 'products/manage_products.html', context)
 
 def home(request):
     """

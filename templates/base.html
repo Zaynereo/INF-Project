@@ -14,6 +14,22 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Toast Container -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast align-items-center text-white {% if message.tags == 'error' %}bg-danger{% else %}bg-success{% endif %} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -30,6 +46,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'products:home' %}">Home</a>
                     </li>
+                    {% if request.session.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'products:manage_products' %}">Manage Products</a>
+                    </li>
+                    {% endif %}
                 </ul>
                 
                 <!-- Search Form -->
@@ -41,12 +62,23 @@
                 </form>
                 
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Register</a>
-                    </li>
+                    {% if request.session.customer_id %}
+                        <li class="nav-item">
+                            <span class="navbar-text me-3">
+                                Welcome, {{ request.session.customer_name }}!
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:login' %}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:register' %}">Register</a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -69,9 +101,16 @@
                 <div class="col-md-4">
                     <h5>Quick Links</h5>
                     <ul class="list-unstyled">
-                        <li><a href="#" class="text-light">Products</a></li>
-                        <li><a href="#" class="text-light">Cart</a></li>
-                        <li><a href="#" class="text-light">Login</a></li>
+                        <li><a href="{% url 'products:home' %}" class="text-light">Products</a></li>
+                        {% if request.session.is_admin %}
+                            <li><a href="{% url 'products:manage_products' %}" class="text-light">Manage Products</a></li>
+                        {% endif %}
+                        {% if request.session.customer_id %}
+                             <li><a href="{% url 'accounts:logout' %}" class="text-light">Logout</a></li>
+                        {% else %}
+                            <li><a href="{% url 'accounts:login' %}" class="text-light">Login</a></li>
+                            <li><a href="{% url 'accounts:register' %}" class="text-light">Register</a></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="col-md-4">
@@ -89,6 +128,20 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Initialize Bootstrap Toasts
+        document.addEventListener('DOMContentLoaded', function () {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+            var toastList = toastElList.map(function (toastEl) {
+                var toast = new bootstrap.Toast(toastEl, {
+                    delay: 5000 // Show toast for 5 seconds
+                });
+                toast.show();
+                return toast;
+            });
+        });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>
