@@ -127,3 +127,46 @@ class ProductReview(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.user.username} - {self.rating} stars"
+
+
+class Supplier(models.Model):
+    """Supplier model corresponding to your existing Supplier table"""
+    name = models.CharField(max_length=100)
+    contact = models.CharField(max_length=100)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Supply(models.Model):
+    """Supply model corresponding to your existing Supplies table"""
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supplies')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='supplies')
+    supply_date = models.DateField()
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    quantity = models.IntegerField(validators=[MinValueValidator(1)])
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Supplies"
+        ordering = ['-supply_date']
+
+    def __str__(self):
+        return f"{self.product.name} from {self.supplier.name} - {self.supply_date}"
+
+    def save(self, *args, **kwargs):
+        """Calculate total cost when saving"""
+        self.total_cost = self.cost_price * self.quantity
+        super().save(*args, **kwargs)

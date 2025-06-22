@@ -1,147 +1,151 @@
--- Drop the database if it already exists (be careful!)
-DROP DATABASE IF EXISTS grocerydb;
+-- STEP 1: Full Database Reset
+-- WARNING: This is a destructive action that will remove ALL tables and data.
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
 
--- Create a fresh database
-CREATE DATABASE grocerydb;
-USE grocerydb;
+-- Restore default permissions for the new 'public' schema for Supabase
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
 
--- Create Product table
-CREATE TABLE Product (
-    product_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    category VARCHAR(100),
-    sub_category VARCHAR(100),
-    brand VARCHAR(100),
-    price DECIMAL(10,2),
-    unit VARCHAR(50),
-    stock_level INT
+
+-- STEP 2: Create the New, Final Database Structure
+
+-- Create Category table
+CREATE TABLE Category (
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- Create SubCategory table
+CREATE TABLE SubCategory (
+    subcategory_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    -- Link to the parent category
+    category_id INT NOT NULL REFERENCES Category(category_id) ON DELETE CASCADE,
+    -- Ensure a sub-category name is unique within its parent category
+    UNIQUE (name, category_id)
+);
+
+-- Create Brand table
+CREATE TABLE Brand (
+    brand_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Create Supplier table
 CREATE TABLE Supplier (
-    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    contact VARCHAR(100)
+    supplier_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    contact VARCHAR(100) -- This will store the phone number
+);
+
+-- Create Product table
+CREATE TABLE Product (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    brand_id INT REFERENCES Brand(brand_id) ON DELETE SET NULL,
+    category_id INT REFERENCES Category(category_id) ON DELETE SET NULL,
+    subcategory_id INT REFERENCES SubCategory(subcategory_id) ON DELETE SET NULL,
+    market_price DECIMAL(10, 2) NOT NULL CHECK (market_price >= 0),
+    sale_price DECIMAL(10, 2) NOT NULL CHECK (sale_price >= 0),
+    unit VARCHAR(50),
+    stock_level INT NOT NULL DEFAULT 0 CHECK (stock_level >= 0),
+    rating DECIMAL(3, 2) DEFAULT 0.0 CHECK (rating >= 0 AND rating <= 5)
 );
 
 -- Create Customer table
 CREATE TABLE Customer (
-    customer_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    email VARCHAR(100),
-    phone VARCHAR(20)
+    customer_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(25)
 );
 
--- Create OrderTable (Order is a reserved word in MySQL)
+-- Create OrderTable (Simplified)
 CREATE TABLE OrderTable (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT,
-    order_date DATE,
-    total_amount DECIMAL(10,2),
-    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES Customer(customer_id) ON DELETE CASCADE,
+    order_date TIMESTAMPTZ DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL
 );
 
--- Create OrderItem table (Many-to-Many: Orders & Products)
+-- Create OrderItem table (Simplified)
 CREATE TABLE OrderItem (
-    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT,
-    product_id INT,
-    quantity INT,
-    FOREIGN KEY (order_id) REFERENCES OrderTable(order_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES OrderTable(order_id) ON DELETE CASCADE,
+    product_id INT REFERENCES Product(product_id) ON DELETE RESTRICT,
+    quantity INT NOT NULL CHECK (quantity > 0)
 );
 
--- Create Supplies table (Many-to-Many: Products & Suppliers)
+-- Create Supplies table
 CREATE TABLE Supplies (
-    supply_id INT AUTO_INCREMENT PRIMARY KEY,
-    supplier_id INT,
-    product_id INT,
-    supply_date DATE,
-    cost_price DECIMAL(10,2),
-    FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+    supply_id SERIAL PRIMARY KEY,
+    supplier_id INT REFERENCES Supplier(supplier_id) ON DELETE CASCADE,
+    product_id INT REFERENCES Product(product_id) ON DELETE CASCADE,
+    supply_date DATE NOT NULL,
+    cost_price DECIMAL(10, 2) NOT NULL
 );
 
--- Insert 10 sample rows for each table
-INSERT INTO Product (name, category, sub_category, brand, price, unit, stock_level)
-VALUES
-('Garlic Oil', 'Beauty & Hygiene', 'Hair Care', 'Sri Sri Ayurveda', 220.00, 'ml', 100),
-('Water Bottle', 'Kitchen, Garden & Pets', 'Storage', 'Mastercook', 180.00, 'pcs', 50),
-('Cereal Jar', 'Cleaning & Household', 'Storage', 'Nakoda', 149.00, 'pcs', 200),
-('Face Wash', 'Beauty & Hygiene', 'Skin Care', 'Oxy', 110.00, 'ml', 80),
-('Hand Sanitizer', 'Beauty & Hygiene', 'Bath', 'Bionova', 250.00, 'ml', 150),
-('Smooth Skin Oil', 'Beauty & Hygiene', 'Skin Care', 'Aroma Treasures', 324.00, 'ml', 70),
-('Salted Pumpkin', 'Gourmet & World Food', 'Snacks', 'Graminway', 180.00, 'gm', 40),
-('Organic Tofu', 'Gourmet & World Food', 'Dairy & Cheese', 'Murginns', 85.14, 'gm', 90),
-('Wheat Grass Powder', 'Gourmet & World Food', 'Health Food', 'NUTRASHIL', 261.00, 'gm', 60),
-('Biotin Shampoo', 'Beauty & Hygiene', 'Hair Care', 'StBotanica', 1098.00, 'ml', 30);
 
--- Similarly insert into Supplier
-INSERT INTO Supplier (name, contact)
-VALUES
-('ABC Supplies', 'abc@example.com'),
-('XYZ Traders', 'xyz@example.com'),
-('Global Products', 'global@example.com'),
-('FreshMart', 'fresh@example.com'),
-('Beauty Essentials', 'beauty@example.com'),
-('Daily Needs', 'daily@example.com'),
-('Wellness Co', 'wellness@example.com'),
-('Eco Store', 'eco@example.com'),
-('Nature Hub', 'nature@example.com'),
-('Organic World', 'organic@example.com');
+-- STEP 3: Insert Compatible Sample Data
 
--- Insert into Customer
-INSERT INTO Customer (name, email, phone)
-VALUES
-('John Doe', 'john@example.com', '1234567890'),
-('Jane Smith', 'jane@example.com', '9876543210'),
-('Alice Johnson', 'alice@example.com', '1112223333'),
-('Bob Brown', 'bob@example.com', '4445556666'),
-('Charlie White', 'charlie@example.com', '7778889999'),
-('Eva Green', 'eva@example.com', '2223334444'),
-('Tom Blue', 'tom@example.com', '5556667777'),
-('Sam Red', 'sam@example.com', '8889990000'),
-('Lisa Pink', 'lisa@example.com', '6667778888'),
-('Nick Black', 'nick@example.com', '9990001111');
+-- 1. Insert Categories
+INSERT INTO Category (name, description) VALUES
+('Beauty & Hygiene', 'Products for personal care, grooming, and wellness.'),
+('Kitchen, Garden & Pets', 'Items for kitchen, home garden, and pet care.'),
+('Cleaning & Household', 'Products for cleaning and maintaining a household.'),
+('Gourmet & World Food', 'Specialty and international food items.');
 
--- Insert sample Orders
-INSERT INTO OrderTable (customer_id, order_date, total_amount)
-VALUES
-(1, '2025-06-01', 500.00),
-(2, '2025-06-02', 300.00),
-(3, '2025-06-03', 450.00),
-(4, '2025-06-04', 700.00),
-(5, '2025-06-05', 200.00),
-(6, '2025-06-06', 350.00),
-(7, '2025-06-07', 400.00),
-(8, '2025-06-08', 150.00),
-(9, '2025-06-09', 600.00),
-(10, '2025-06-10', 750.00);
+-- 2. Insert SubCategories
+INSERT INTO SubCategory (category_id, name) VALUES
+((SELECT category_id FROM Category WHERE name = 'Beauty & Hygiene'), 'Hair Care'),
+((SELECT category_id FROM Category WHERE name = 'Beauty & Hygiene'), 'Skin Care'),
+((SELECT category_id FROM Category WHERE name = 'Kitchen, Garden & Pets'), 'Storage & Accessories'),
+((SELECT category_id FROM Category WHERE name = 'Cleaning & Household'), 'Bins & Bathroom Ware'),
+((SELECT category_id FROM Category WHERE name = 'Gourmet & World Food'), 'Snacks, Dry Fruits, Nuts'),
+((SELECT category_id FROM Category WHERE name = 'Gourmet & World Food'), 'Dairy & Cheese');
 
--- Insert sample OrderItems
-INSERT INTO OrderItem (order_id, product_id, quantity)
-VALUES
-(1, 1, 2),
-(1, 3, 1),
-(2, 4, 3),
-(2, 5, 2),
-(3, 6, 1),
-(4, 7, 4),
-(5, 8, 1),
-(6, 9, 2),
-(7, 10, 1),
-(8, 2, 2);
 
--- Insert sample Supplies
-INSERT INTO Supplies (supplier_id, product_id, supply_date, cost_price)
+-- 3. Insert Brands
+INSERT INTO Brand (name) VALUES
+('Sri Sri Ayurveda'), ('Mastercook'), ('Nakoda'), ('Oxy'), ('Bionova'),
+('Aroma Treasures'), ('Graminway'), ('Murginns'), ('NUTRASHIL'), ('StBotanica');
+
+-- 4. Insert Products
+INSERT INTO Product (name, description, category_id, subcategory_id, brand_id, market_price, sale_price, unit, stock_level, rating)
 VALUES
-(1, 1, '2025-05-01', 180.00),
-(2, 2, '2025-05-02', 150.00),
-(3, 3, '2025-05-03', 120.00),
-(4, 4, '2025-05-04', 100.00),
-(5, 5, '2025-05-05', 90.00),
-(6, 6, '2025-05-06', 110.00),
-(7, 7, '2025-05-07', 160.00),
-(8, 8, '2025-05-08', 85.00),
-(9, 9, '2025-05-09', 220.00),
-(10, 10, '2025-05-10', 800.00);
+('Garlic Oil - Vegetarian Capsule 500 mg', 'This Product contains Garlic Oil that is known to help proper digestion.', (SELECT category_id FROM Category WHERE name = 'Beauty & Hygiene'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Hair Care'), (SELECT brand_id FROM Brand WHERE name = 'Sri Sri Ayurveda'), 220.00, 220.00, 'ml', 100, 4.1),
+('Water Bottle - Orange', 'Each product is microwave safe (without lid), refrigerator safe, dishwasher safe.', (SELECT category_id FROM Category WHERE name = 'Kitchen, Garden & Pets'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Storage & Accessories'), (SELECT brand_id FROM Brand WHERE name = 'Mastercook'), 180.00, 180.00, 'pcs', 50, 2.3),
+('Cereal Flip Lid Container/Storage Jar', 'Multipurpose container with an attractive design and made from food-grade plastic.', (SELECT category_id FROM Category WHERE name = 'Cleaning & Household'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Bins & Bathroom Ware'), (SELECT brand_id FROM Brand WHERE name = 'Nakoda'), 176.00, 149.00, 'pcs', 200, 3.7),
+('Face Wash - Oil Control, Active', 'This face wash deeply cleanses dirt and impurities. Active ingredients help remove excess oil.', (SELECT category_id FROM Category WHERE name = 'Beauty & Hygiene'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Skin Care'), (SELECT brand_id FROM Brand WHERE name = 'Oxy'), 110.00, 110.00, 'ml', 80, 5.0),
+('Salted Pumpkin Seeds', 'Graminway Salted Pumpkin Seeds are the perfect snack for your family.', (SELECT category_id FROM Category WHERE name = 'Gourmet & World Food'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Snacks, Dry Fruits, Nuts'), (SELECT brand_id FROM Brand WHERE name = 'Graminway'), 180.00, 180.00, 'gm', 40, 4.9),
+('Organic Tofu - Soy Paneer', 'Murginns’ fresh and firm Organic tofu is the perfect non-dairy substitute to paneer.', (SELECT category_id FROM Category WHERE name = 'Gourmet & World Food'), (SELECT subcategory_id FROM SubCategory WHERE name = 'Dairy & Cheese'), (SELECT brand_id FROM Brand WHERE name = 'Murginns'), 90.00, 85.14, 'gm', 90, 3.9);
+
+-- 5. Insert Suppliers
+INSERT INTO Supplier (name, contact) VALUES
+('ABC Supplies', '111-222-3333'),
+('FreshMart Distributors', '222-333-4444');
+
+-- 6. Insert Customers
+INSERT INTO Customer (name, email, phone) VALUES
+('John Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane Smith', 'jane.smith@example.com', '987-654-3210');
+
+-- 7. Insert Orders
+INSERT INTO OrderTable (customer_id, total_amount) VALUES
+((SELECT customer_id FROM Customer WHERE email = 'john.doe@example.com'), 259.00),
+((SELECT customer_id FROM Customer WHERE email = 'jane.smith@example.com'), 265.14);
+
+-- 8. Insert OrderItems
+INSERT INTO OrderItem (order_id, product_id, quantity) VALUES
+(1, (SELECT product_id FROM Product WHERE name LIKE 'Face Wash%'), 1),
+(1, (SELECT product_id FROM Product WHERE name LIKE 'Cereal Flip%'), 1),
+(2, (SELECT product_id FROM Product WHERE name LIKE 'Organic Tofu%'), 1),
+(2, (SELECT product_id FROM Product WHERE name LIKE 'Salted Pumpkin%'), 1);
+
+-- 9. Insert Supplies
+INSERT INTO Supplies (supplier_id, product_id, supply_date, cost_price) VALUES
+((SELECT supplier_id FROM Supplier WHERE name = 'ABC Supplies'), (SELECT product_id FROM Product WHERE name LIKE 'Garlic Oil%'), '2025-05-01', 180.00),
+((SELECT supplier_id FROM Supplier WHERE name = 'FreshMart Distributors'), (SELECT product_id FROM Product WHERE name LIKE 'Water Bottle%'), '2025-05-02', 150.00);
