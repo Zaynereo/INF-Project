@@ -9,6 +9,8 @@ from .models import CustomerProfile, Address
 from orders.models import Order
 from cart.models import Wishlist
 from django.http import HttpResponse
+from django.contrib.auth import login
+from .forms import UserRegistrationForm
 
 
 class ProfileView(View):
@@ -54,3 +56,26 @@ class OrderDetailView(View):
 class WishlistView(View):
     def get(self, request, *args, **kwargs):
         return HttpResponse("Wishlist page coming soon.", content_type="text/plain")
+
+
+def register(request):
+    """
+    Handle user registration.
+    Creates a new user and logs them in upon successful registration.
+    """
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            new_user = form.save(commit=False)
+            new_user.set_password(form.cleaned_data['password'])
+            new_user.save()
+            # Log the user in
+            login(request, new_user)
+            messages.success(request, 'Registration successful. Welcome!')
+            return redirect('products:home')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'auth/register.html', {'form': form})
