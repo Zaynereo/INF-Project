@@ -1,5 +1,4 @@
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
 from products.models import Category, SubCategory, Brand, Product, Supplier
 from django.utils import timezone
 from decimal import Decimal
@@ -10,11 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Setting up initial data...')
-        
-        # Create superuser if it doesn't exist
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-            self.stdout.write(self.style.SUCCESS('Superuser created: admin/admin123'))
         
         # Create categories
         categories_data = [
