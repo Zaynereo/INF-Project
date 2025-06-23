@@ -1,6 +1,4 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
@@ -11,7 +9,7 @@ from cart.models import Cart, CartItem
 from accounts.models import Address
 
 
-class CheckoutView(LoginRequiredMixin, CreateView):
+class CheckoutView(CreateView):
     """Checkout process"""
     model = Order
     template_name = 'orders/checkout.html'
@@ -65,7 +63,7 @@ class CheckoutView(LoginRequiredMixin, CreateView):
         return redirect('orders:order_detail', pk=order.pk)
 
 
-class OrderDetailView(LoginRequiredMixin, DetailView):
+class OrderDetailView(DetailView):
     """Display order details"""
     model = Order
     template_name = 'orders/order_detail.html'
@@ -76,7 +74,7 @@ class OrderDetailView(LoginRequiredMixin, DetailView):
         return Order.objects.filter(customer=self.request.user)
 
 
-class OrderCancelView(LoginRequiredMixin, UpdateView):
+class OrderCancelView(UpdateView):
     """Cancel an order"""
     model = Order
     fields = []
@@ -119,7 +117,7 @@ class OrderTrackView(DetailView):
         return context
 
 
-class PaymentView(LoginRequiredMixin, DetailView):
+class PaymentView(DetailView):
     """Payment processing page"""
     model = Order
     template_name = 'orders/payment.html'
@@ -130,7 +128,7 @@ class PaymentView(LoginRequiredMixin, DetailView):
         return Order.objects.filter(customer=self.request.user, payment_status='pending')
 
 
-class PaymentSuccessView(LoginRequiredMixin, UpdateView):
+class PaymentSuccessView(UpdateView):
     """Handle successful payment"""
     model = Order
     fields = []
@@ -159,7 +157,7 @@ class PaymentSuccessView(LoginRequiredMixin, UpdateView):
         return redirect('orders:order_detail', pk=order.pk)
 
 
-class PaymentCancelView(LoginRequiredMixin, DetailView):
+class PaymentCancelView(DetailView):
     """Handle cancelled payment"""
     model = Order
     template_name = 'orders/payment_cancel.html'
