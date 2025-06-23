@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.db import connection
 from .models import Product, Category, Brand
 from django.contrib import messages
+from django.db import IntegrityError
 
 # Decorator to check for admin status
 def admin_required(view_func):
@@ -20,20 +21,17 @@ def manage_products(request):
     """
     sort_by = request.GET.get('sort', 'name_asc')
     search_query = request.GET.get('q', '')
-
     params = []
-    
     query = """
         SELECT p.*, b.name as brand_name, c.name as category_name
         FROM product p
         LEFT JOIN brand b ON p.brand_id = b.brand_id
         LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.is_active = TRUE
     """
-    
     if search_query:
-        query += " WHERE p.name ILIKE %s"
-        params.append(f'%{search_query}%')
-
+        query += " AND (p.name ILIKE %s OR b.name ILIKE %s OR c.name ILIKE %s)"
+        params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
     # Sorting
     if sort_by == 'stock_asc':
         query += " ORDER BY p.stock_level ASC"
@@ -47,16 +45,84 @@ def manage_products(request):
         query += " ORDER BY p.name DESC"
     else:  # name_asc
         query += " ORDER BY p.name ASC"
-
     with connection.cursor() as cursor:
         cursor.execute(query, params)
         columns = [col[0] for col in cursor.description]
         products = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+    # --- Order History Section ---
+    # Filters
+    order_customer = request.GET.get('order_customer', '')
+    order_product = request.GET.get('order_product', '')
+    order_start = request.GET.get('order_start', '')
+    order_end = request.GET.get('order_end', '')
+    order_page = int(request.GET.get('order_page', 1))
+    ORDERS_PER_PAGE = 10
+    order_params = []
+    order_where = []
+    order_query = '''
+        SELECT ot.order_id, ot.order_date, cu.name as customer_name, ot.total_amount
+        FROM ordertable ot
+        JOIN customer cu ON ot.customer_id = cu.customer_id
+    '''
+    if order_customer:
+        order_where.append('cu.name ILIKE %s')
+        order_params.append(f'%{order_customer}%')
+    if order_start:
+        order_where.append('ot.order_date >= %s')
+        order_params.append(order_start)
+    if order_end:
+        order_where.append('ot.order_date <= %s')
+        order_params.append(order_end)
+    if order_product:
+        order_query += ' JOIN orderitem oi ON ot.order_id = oi.order_id JOIN product p2 ON oi.product_id = p2.product_id'
+        order_where.append('p2.name ILIKE %s')
+        order_params.append(f'%{order_product}%')
+    if order_where:
+        order_query += ' WHERE ' + ' AND '.join(order_where)
+    order_query += ' ORDER BY ot.order_date DESC'
+    # Pagination
+    order_query_count = f'SELECT COUNT(*) FROM ({order_query}) as sub'
+    order_query += f' LIMIT {ORDERS_PER_PAGE} OFFSET {(order_page-1)*ORDERS_PER_PAGE}'
+    with connection.cursor() as cursor:
+        # Get total count for pagination
+        cursor.execute(order_query_count, order_params)
+        total_orders = cursor.fetchone()[0]
+        total_pages = (total_orders + ORDERS_PER_PAGE - 1) // ORDERS_PER_PAGE
+        # Get paginated orders
+        cursor.execute(order_query, order_params)
+        order_columns = [col[0] for col in cursor.description]
+        orders = [dict(zip(order_columns, row)) for row in cursor.fetchall()]
+        # Get order details for all orders on this page
+        order_ids = [o['order_id'] for o in orders]
+        order_details = {}
+        if order_ids:
+            format_strings = ','.join(['%s'] * len(order_ids))
+            cursor.execute(f'''
+                SELECT oi.order_id, p.name as product_name, oi.quantity, p.sale_price
+                FROM orderitem oi
+                JOIN product p ON oi.product_id = p.product_id
+                WHERE oi.order_id IN ({format_strings})
+            ''', order_ids)
+            for row in cursor.fetchall():
+                order_id, product_name, quantity, sale_price = row
+                order_details.setdefault(order_id, []).append({
+                    'product_name': product_name,
+                    'quantity': quantity,
+                    'sale_price': sale_price,
+                })
     context = {
         'products': products,
         'sort_by': sort_by,
         'search_query': search_query,
+        'orders': orders,
+        'order_details': order_details,
+        'order_page': order_page,
+        'total_order_pages': total_pages,
+        'order_customer': order_customer,
+        'order_product': order_product,
+        'order_start': order_start,
+        'order_end': order_end,
     }
     return render(request, 'products/manage_products.html', context)
 
@@ -78,6 +144,7 @@ def home(request):
         FROM product p
         LEFT JOIN brand b ON p.brand_id = b.brand_id
         LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.is_active = TRUE
     """
     params = []
     where_clauses = []
@@ -101,7 +168,7 @@ def home(request):
         params.append(max_price)
     
     if where_clauses:
-        query += " WHERE " + " AND ".join(where_clauses)
+        query += " AND " + " AND ".join(where_clauses)
 
     # Sorting
     if sort_by == 'price_asc':
@@ -209,3 +276,14 @@ def product_search(request):
         'results_count': len(products) if products else 0,
     }
     return render(request, 'products/product_search.html', context)
+
+@admin_required
+def delete_product(request, product_id):
+    if request.method == 'POST':
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute('UPDATE product SET is_active = FALSE WHERE product_id = %s', [product_id])
+            messages.success(request, 'Product archived (soft deleted) successfully.')
+        except Exception as e:
+            messages.error(request, f'Error archiving product: {e}')
+    return redirect('products:manage_products')

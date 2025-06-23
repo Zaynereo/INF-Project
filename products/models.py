@@ -60,6 +60,7 @@ class Product(models.Model):
     unit = models.CharField(max_length=50, blank=True, null=True)
     stock_level = models.IntegerField()
     rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         managed = False
