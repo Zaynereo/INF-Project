@@ -226,6 +226,17 @@ function updateCartCount(count) {
 
 // Form handling
 function initForms() {
+    // Add loading state to forms
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            const submitButton = this.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing...';
+            }
+        });
+    });
+    
     // Image preview for file uploads
     document.querySelectorAll('.image-upload').forEach(input => {
         input.addEventListener('change', function() {
