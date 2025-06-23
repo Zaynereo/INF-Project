@@ -4,6 +4,10 @@ from django.db import connection
 from .models import Product, Category, Brand
 from django.contrib import messages
 from django.db import IntegrityError
+from django.http import JsonResponse
+from .forms import ProductForm
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 # Decorator to check for admin status
 def admin_required(view_func):
@@ -49,6 +53,16 @@ def manage_products(request):
         cursor.execute(query, params)
         columns = [col[0] for col in cursor.description]
         products = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        # Fetch all categories and brands for the add product modal
+        cursor.execute("SELECT * FROM category ORDER BY name")
+        category_columns = [col[0] for col in cursor.description]
+        categories = [dict(zip(category_columns, row)) for row in cursor.fetchall()]
+        cursor.execute("SELECT * FROM brand ORDER BY name")
+        brand_columns = [col[0] for col in cursor.description]
+        brands = [dict(zip(brand_columns, row)) for row in cursor.fetchall()]
+        cursor.execute("SELECT * FROM subcategory ORDER BY name")
+        subcategory_columns = [col[0] for col in cursor.description]
+        subcategories = [dict(zip(subcategory_columns, row)) for row in cursor.fetchall()]
 
     # --- Order History Section ---
     # Filters
@@ -115,6 +129,9 @@ def manage_products(request):
         'products': products,
         'sort_by': sort_by,
         'search_query': search_query,
+        'brands': brands,
+        'categories': categories,
+        'subcategories': subcategories,
         'orders': orders,
         'order_details': order_details,
         'order_page': order_page,
@@ -287,3 +304,125 @@ def delete_product(request, product_id):
         except Exception as e:
             messages.error(request, f'Error archiving product: {e}')
     return redirect('products:manage_products')
+
+@admin_required
+def add_product(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            with connection.cursor() as cursor:
+                cursor.execute('''
+                    INSERT INTO product (name, description, brand_id, category_id, subcategory_id, market_price, sale_price, unit, stock_level, rating, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                    RETURNING product_id
+                ''', [
+                    data['name'],
+                    data['description'],
+                    data['brand'].brand_id if data['brand'] else None,
+                    data['category'].category_id if data['category'] else None,
+                    data['subcategory'].subcategory_id if data['subcategory'] else None,
+                    data['market_price'],
+                    data['sale_price'],
+                    data['unit'],
+                    data['stock_level'],
+                    data['rating'],
+                ])
+                product_id = cursor.fetchone()[0]
+            return JsonResponse({'success': True, 'product_id': product_id})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@admin_required
+@csrf_exempt
+def add_brand(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Brand name is required.'}, status=400)
+        with connection.cursor() as cursor:
+            # Check for duplicate
+            cursor.execute('SELECT brand_id FROM brand WHERE name = %s', [name])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'Brand already exists.'}, status=400)
+            cursor.execute('INSERT INTO brand (name) VALUES (%s) RETURNING brand_id', [name])
+            brand_id = cursor.fetchone()[0]
+        return JsonResponse({'success': True, 'brand': {'brand_id': brand_id, 'name': name}})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def delete_brand(request, brand_id):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        with connection.cursor() as cursor:
+            # Check if brand is referenced by any product
+            cursor.execute('SELECT COUNT(*) FROM product WHERE brand_id = %s', [brand_id])
+            if cursor.fetchone()[0] > 0:
+                return JsonResponse({'success': False, 'error': 'Cannot delete: This brand is used by one or more products.'}, status=400)
+            cursor.execute('DELETE FROM brand WHERE brand_id = %s', [brand_id])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def delete_category(request, category_id):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        with connection.cursor() as cursor:
+            # Check if category is referenced by any product
+            cursor.execute('SELECT COUNT(*) FROM product WHERE category_id = %s', [category_id])
+            if cursor.fetchone()[0] > 0:
+                return JsonResponse({'success': False, 'error': 'Cannot delete: This category is used by one or more products.'}, status=400)
+            cursor.execute('DELETE FROM category WHERE category_id = %s', [category_id])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def delete_subcategory(request, subcategory_id):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        with connection.cursor() as cursor:
+            # Check if subcategory is referenced by any product
+            cursor.execute('SELECT COUNT(*) FROM product WHERE subcategory_id = %s', [subcategory_id])
+            if cursor.fetchone()[0] > 0:
+                return JsonResponse({'success': False, 'error': 'Cannot delete: This subcategory is used by one or more products.'}, status=400)
+            cursor.execute('DELETE FROM subcategory WHERE subcategory_id = %s', [subcategory_id])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def add_category(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Category name is required.'}, status=400)
+        with connection.cursor() as cursor:
+            # Check for duplicate
+            cursor.execute('SELECT category_id FROM category WHERE name = %s', [name])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'Category already exists.'}, status=400)
+            cursor.execute('INSERT INTO category (name) VALUES (%s) RETURNING category_id', [name])
+            category_id = cursor.fetchone()[0]
+        return JsonResponse({'success': True, 'category': {'category_id': category_id, 'name': name}})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def add_subcategory(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        name = request.POST.get('name', '').strip()
+        category_id = request.POST.get('category_id')
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Subcategory name is required.'}, status=400)
+        if not category_id:
+            return JsonResponse({'success': False, 'error': 'Category is required for subcategory.'}, status=400)
+        with connection.cursor() as cursor:
+            # Check for duplicate
+            cursor.execute('SELECT subcategory_id FROM subcategory WHERE name = %s AND category_id = %s', [name, category_id])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'Subcategory already exists for this category.'}, status=400)
+            cursor.execute('INSERT INTO subcategory (name, category_id) VALUES (%s, %s) RETURNING subcategory_id', [name, category_id])
+            subcategory_id = cursor.fetchone()[0]
+        return JsonResponse({'success': True, 'subcategory': {'subcategory_id': subcategory_id, 'name': name, 'category_id': category_id}})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
