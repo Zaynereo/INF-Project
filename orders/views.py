@@ -1,4 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
@@ -9,7 +11,7 @@ from cart.models import Cart, CartItem
 from accounts.models import Address
 
 
-class CheckoutView(CreateView):
+class CheckoutView(LoginRequiredMixin, CreateView):
     """Checkout process"""
     model = Order
     template_name = 'orders/checkout.html'
@@ -63,7 +65,7 @@ class CheckoutView(CreateView):
         return redirect('orders:order_detail', pk=order.pk)
 
 
-class OrderDetailView(DetailView):
+class OrderDetailView(LoginRequiredMixin, DetailView):
     """Display order details"""
     model = Order
     template_name = 'orders/order_detail.html'
@@ -74,7 +76,7 @@ class OrderDetailView(DetailView):
         return Order.objects.filter(customer=self.request.user)
 
 
-class OrderCancelView(UpdateView):
+class OrderCancelView(LoginRequiredMixin, UpdateView):
     """Cancel an order"""
     model = Order
     fields = []
@@ -117,7 +119,7 @@ class OrderTrackView(DetailView):
         return context
 
 
-class PaymentView(DetailView):
+class PaymentView(LoginRequiredMixin, DetailView):
     """Payment processing page"""
     model = Order
     template_name = 'orders/payment.html'
@@ -128,7 +130,7 @@ class PaymentView(DetailView):
         return Order.objects.filter(customer=self.request.user, payment_status='pending')
 
 
-class PaymentSuccessView(UpdateView):
+class PaymentSuccessView(LoginRequiredMixin, UpdateView):
     """Handle successful payment"""
     model = Order
     fields = []
@@ -157,7 +159,7 @@ class PaymentSuccessView(UpdateView):
         return redirect('orders:order_detail', pk=order.pk)
 
 
-class PaymentCancelView(DetailView):
+class PaymentCancelView(LoginRequiredMixin, DetailView):
     """Handle cancelled payment"""
     model = Order
     template_name = 'orders/payment_cancel.html'

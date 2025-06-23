@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connection
+from django.contrib.auth.hashers import make_password, check_password
 from .forms import RegistrationForm, LoginForm
 
 def register_view(request):
@@ -22,9 +23,10 @@ def register_view(request):
                     
                 else:
                     # Hash password and insert new customer
+                    hashed_password = make_password(password)
                     cursor.execute(
                         "INSERT INTO customer (name, email, password) VALUES (%s, %s, %s) RETURNING customer_id",
-                        [name, email, password]
+                        [name, email, hashed_password]
                     )
                     customer_id = cursor.fetchone()[0]
                     
@@ -52,7 +54,7 @@ def login_view(request):
                 cursor.execute("SELECT customer_id, name, password, is_admin FROM customer WHERE email = %s", [email])
                 customer = cursor.fetchone()
                 
-                if customer and customer[2] == password:
+                if customer and check_password(password, customer[2]):
                     # Password is correct, log the user in
                     request.session['customer_id'] = customer[0]
                     request.session['customer_name'] = customer[1]

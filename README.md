@@ -1,20 +1,28 @@
-# Grocery Store Project
+# Django Grocery Store Project
 
-A simple e-commerce grocery store web app using Django ORM and a custom SQL schema. Focuses on SQL skills and minimal Django usage.
+A comprehensive e-commerce platform built with Django and PostgreSQL, designed to seamlessly connect SQL queries with Python for a grocery store management system.
 
 ## Features
-- Product catalog, categories, brands
-- Cart and order management
-- User sessions (no Django admin or built-in authentication)
 
-## Setup
-1. Install requirements
-2. Configure your database in `.env`
-3. Run migrations and start the server
+### ✅ Implemented
+- **Django Framework Integration**: Full Django setup with PostgreSQL Supabase connection
+- **Database Models**: Complete ORM models for products, orders, customers, and cart
+- **Admin Interface**: Comprehensive Django admin for managing all data
+- **User Authentication**: Django Allauth integration for user management
+- **Product Management**: Categories, brands, products with reviews and images
+- **Order System**: Complete order processing with status tracking
+- **Shopping Cart**: Session-based cart with AJAX functionality
+- **Customer Profiles**: Extended user profiles with addresses
 
-## Database
-- Uses a custom SQL schema for all core tables
-- Only minimal Django tables (`django_session`, `django_migrations`) are present
+### 🚧 Future Implementations
+- **User Authentication**: Register, login, and profile management
+- **Product Management**: Browse, search, and filter products
+- **Shopping Cart**: Add, update, and remove items
+- **Order Processing**: Secure checkout with order history
+- **Admin Dashboard**: Comprehensive management interface
+- **Responsive Design**: Mobile-friendly interface
+- **Real-time Updates**: AJAX-based updates
+- **MongoDB Atlas Integration**: For additional data storage
 
 ## Project Structure
 
@@ -107,6 +115,14 @@ Visit http://127.0.0.1:8000/ to see your application.
 - **Wishlist**: User wishlists
 - **Coupon**: Discount coupons
 - **CouponUsage**: Coupon usage tracking
+
+## Admin Interface
+
+Access the Django admin at http://127.0.0.1:8000/admin/
+
+Default admin credentials:
+- Username: `admin`
+- Password: `admin123`
 
 ## API Endpoints
 
