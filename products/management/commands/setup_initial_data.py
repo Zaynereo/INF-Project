@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from products.models import Category, SubCategory, Brand, Product, Supplier
+from products.models import Category, Subcategory, Brand, Product, Supplier
 from django.utils import timezone
 from decimal import Decimal
 
@@ -42,7 +42,7 @@ class Command(BaseCommand):
         
         subcategories = {}
         for subcat_data in subcategories_data:
-            subcategory, created = SubCategory.objects.get_or_create(
+            subcategory, created = Subcategory.objects.get_or_create(
                 name=subcat_data['name'],
                 category=categories[subcat_data['category']],
             )

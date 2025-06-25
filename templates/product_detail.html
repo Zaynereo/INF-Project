@@ -14,6 +14,9 @@
                      class="card-img-top" alt="{{ product.name }}">
             </div>
             <div class="col-lg-6">
+                <!-- DEBUG: product = {{ product }} -->
+                <!-- DEBUG: product.id = {{ product.id }} -->
+
                 <!-- Product Details -->
                 <h1 class="display-5 fw-bold">{{ product.name }}</h1>
                 <p class="lead">
@@ -62,9 +65,13 @@
                 <!-- Add to Cart -->
                 <div class="d-grid gap-2">
                     {% if product.stock_level > 0 %}
-                    <a href="#" class="btn btn-lg btn-success">
-                        <i class="fas fa-cart-plus me-2"></i>Add to Cart
-                    </a>
+                    <form method="post" action="{% url 'cart:add_to_cart' product.product_id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-lg btn-success">
+                            <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                        </button>
+                    </form>
                     {% else %}
                     <button class="btn btn-lg btn-secondary" disabled>Out of Stock</button>
                     {% endif %}
