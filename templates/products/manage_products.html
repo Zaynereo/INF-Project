@@ -56,7 +56,7 @@
                             <td>${{ product.sale_price|floatformat:2 }}</td>
                             <td>{{ product.stock_level }}</td>
                             <td>
-                                <a href="#" class="btn btn-sm btn-secondary">
+                                <a href="#" class="btn btn-sm btn-secondary edit-product-btn" data-product-id="{{ product.product_id }}">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
                                 <form method="post" action="{% url 'products:delete_product' product.product_id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?');">
@@ -236,23 +236,22 @@
                 <div class="col-md-6">
                   <label for="id_subcategory" class="form-label">Subcategory</label>
                   <div class="input-group">
-                    <select name="subcategory" class="form-control" id="id_subcategory" disabled>
+                    <select name="subcategory" class="form-control" id="id_subcategory">
                       <option value="">---------</option>
                       {% for sub in subcategories %}
-                        <option value="{{ sub.subcategory_id }}" data-category="{{ sub.category_id }}">{{ sub.name }}</option>
+                        <option value="{{ sub.subcategory_id }}">{{ sub.name }}</option>
                       {% endfor %}
                     </select>
                     <button type="button" class="btn btn-outline-success" id="addSubcategoryBtn" title="Add Subcategory"><i class="fas fa-plus"></i></button>
                   </div>
                   <div id="subcategoryList" class="mt-1" style="font-size:0.95em;">
                     {% for sub in subcategories %}
-                      <span class="badge bg-light text-dark border me-1 mb-1 subcategory-badge" data-id="{{ sub.subcategory_id }}" data-category="{{ sub.category_id }}">
+                      <span class="badge bg-light text-dark border me-1 mb-1 subcategory-badge" data-id="{{ sub.subcategory_id }}">
                         {{ sub.name }}
                         <a href="#" class="text-danger ms-1 delete-subcategory" data-id="{{ sub.subcategory_id }}" title="Delete Subcategory" style="display:inline-block;"><i class="fas fa-trash"></i></a>
                       </span>
                     {% endfor %}
                   </div>
-                  <div id="addSubcategoryError" class="text-danger mt-1"></div>
                 </div>
                 <div class="col-md-6">
                   <label for="id_market_price" class="form-label">Market Price</label>
@@ -285,6 +284,86 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary" form="addProductForm">Add Product</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editProductForm">
+              {% csrf_token %}
+              <input type="hidden" name="product_id" id="edit_product_id">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="edit_name" class="form-label">Name</label>
+                  <input type="text" name="name" maxlength="255" class="form-control" id="edit_name" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_brand" class="form-label">Brand</label>
+                  <select name="brand" class="form-control" id="edit_brand">
+                    <option value="">---------</option>
+                    {% for brand in brands %}
+                      <option value="{{ brand.brand_id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_category" class="form-label">Category</label>
+                  <select name="category" class="form-control" id="edit_category">
+                    <option value="">---------</option>
+                    {% for category in categories %}
+                      <option value="{{ category.category_id }}">{{ category.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_subcategory" class="form-label">Subcategory</label>
+                  <select name="subcategory" class="form-control" id="edit_subcategory">
+                    <option value="">---------</option>
+                    {% for sub in subcategories %}
+                      <option value="{{ sub.subcategory_id }}">{{ sub.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_market_price" class="form-label">Market Price</label>
+                  <input type="number" step="0.01" name="market_price" class="form-control" id="edit_market_price" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_sale_price" class="form-label">Sale Price</label>
+                  <input type="number" step="0.01" name="sale_price" class="form-control" id="edit_sale_price" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_unit" class="form-label">Unit</label>
+                  <input type="text" name="unit" maxlength="50" class="form-control" id="edit_unit">
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_stock_level" class="form-label">Stock Level</label>
+                  <input type="number" name="stock_level" class="form-control" id="edit_stock_level" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="edit_rating" class="form-label">Rating</label>
+                  <input type="number" step="0.01" name="rating" class="form-control" id="edit_rating">
+                </div>
+                <div class="col-12">
+                  <label for="edit_description" class="form-label">Description</label>
+                  <textarea name="description" class="form-control" id="edit_description" rows="2"></textarea>
+                </div>
+              </div>
+              <div id="editProductErrors" class="text-danger mt-3"></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" form="editProductForm">Update Product</button>
           </div>
         </div>
       </div>
@@ -348,40 +427,6 @@ $(function() {
     // Expose toggleOrderDetails globally for inline HTML onclick
     window.toggleOrderDetails = toggleOrderDetails;
 
-    // Custom dropdown logic for Brand
-    $('#brandDropdownMenu').on('click', '.brand-item', function(e) {
-        e.preventDefault();
-        var brandId = $(this).data('id');
-        var brandName = $(this).text();
-        $('#id_brand').val(brandId);
-        $('#selectedBrandLabel').text(brandName);
-    });
-    // Delete brand in dropdown
-    $('#brandDropdownMenu').on('click', '.delete-brand-in-dropdown', function(e) {
-        e.preventDefault();
-        var brandId = $(this).data('id');
-        var $li = $(this).closest('li');
-        if (confirm('Are you sure you want to delete this brand?')) {
-            $.ajax({
-                url: "{% url 'products:delete_brand' 0 %}".replace('0', brandId),
-                type: 'POST',
-                data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                success: function(response) {
-                    $li.remove();
-                    if ($('#id_brand').val() == brandId) {
-                        $('#id_brand').val('');
-                        $('#selectedBrandLabel').text('---------');
-                    }
-                    $('#addBrandError').text('');
-                },
-                error: function(xhr) {
-                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
-                    $('#addBrandError').text(error);
-                }
-            });
-        }
-    });
     // Add brand (AJAX)
     $('#addBrandBtn').on('click', function() {
         var brandName = prompt('Enter new brand name:');
@@ -392,10 +437,15 @@ $(function() {
                 data: {name: brandName, csrfmiddlewaretoken: '{{ csrf_token }}'},
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 success: function(response) {
-                    var newLi = $('<li class="d-flex align-items-center justify-content-between"><a class="dropdown-item brand-item flex-grow-1" href="#" data-id="' + response.brand.brand_id + '">' + response.brand.name + '</a><a href="#" class="text-danger ms-2 delete-brand-in-dropdown" data-id="' + response.brand.brand_id + '" title="Delete Brand"><i class="fas fa-trash"></i></a></li>');
-                    $('#brandDropdownMenu').append(newLi);
+                    // Add new option to select
+                    var newOption = $('<option value="' + response.brand.brand_id + '">' + response.brand.name + '</option>');
+                    $('#id_brand').append(newOption);
                     $('#id_brand').val(response.brand.brand_id);
-                    $('#selectedBrandLabel').text(response.brand.name);
+                    
+                    // Add new badge to list
+                    var newBadge = $('<span class="badge bg-light text-dark border me-1 mb-1 brand-badge" data-id="' + response.brand.brand_id + '">' + response.brand.name + '<a href="#" class="text-danger ms-1 delete-brand" data-id="' + response.brand.brand_id + '" title="Delete Brand" style="display:inline-block;"><i class="fas fa-trash"></i></a></span>');
+                    $('#brandList').append(newBadge);
+                    
                     $('#addBrandError').text('');
                 },
                 error: function(xhr) {
@@ -406,31 +456,101 @@ $(function() {
         }
     });
 
-    // Custom dropdown logic for Category
-    $('#categoryDropdownMenu').on('click', '.category-item', function(e) {
-        e.preventDefault();
-        var categoryId = $(this).data('id');
-        var categoryName = $(this).text();
-        $('#id_category').val(categoryId);
-        $('#selectedCategoryLabel').text(categoryName);
-        // Enable subcategory dropdown if category selected
-        if (categoryId) {
-            $('#subcategoryDropdown').prop('disabled', false);
-            // Filter subcategories
-            $('#subcategoryDropdownMenu li').hide();
-            $('#subcategoryDropdownMenu li[data-category="' + categoryId + '"]').show();
-            $('#subcategoryDropdownMenu li:first').show(); // Show '---------' option
-        } else {
-            $('#subcategoryDropdown').prop('disabled', true);
-            $('#id_subcategory').val('');
-            $('#selectedSubcategoryLabel').text('---------');
+    // Add category (AJAX)
+    $('#addCategoryBtn').on('click', function() {
+        var categoryName = prompt('Enter new category name:');
+        if (categoryName) {
+            $.ajax({
+                url: "{% url 'products:add_category' %}",
+                type: 'POST',
+                data: {name: categoryName, csrfmiddlewaretoken: '{{ csrf_token }}'},
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    // Add new option to select
+                    var newOption = $('<option value="' + response.category.category_id + '">' + response.category.name + '</option>');
+                    $('#id_category').append(newOption);
+                    $('#id_category').val(response.category.category_id);
+                    
+                    // Add new badge to list
+                    var newBadge = $('<span class="badge bg-light text-dark border me-1 mb-1 category-badge" data-id="' + response.category.category_id + '">' + response.category.name + '<a href="#" class="text-danger ms-1 delete-category" data-id="' + response.category.category_id + '" title="Delete Category" style="display:inline-block;"><i class="fas fa-trash"></i></a></span>');
+                    $('#categoryList').append(newBadge);
+                    
+                    $('#addCategoryError').text('');
+                },
+                error: function(xhr) {
+                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
+                    $('#addCategoryError').text(error);
+                }
+            });
         }
     });
-    // Delete category in dropdown
-    $('#categoryDropdownMenu').on('click', '.delete-category-in-dropdown', function(e) {
+
+    // Add subcategory (AJAX)
+    $('#addSubcategoryBtn').on('click', function() {
+        var subcategoryName = prompt('Enter new subcategory name:');
+        var categoryId = $('#id_category').val();
+        if (subcategoryName && categoryId) {
+            $.ajax({
+                url: "{% url 'products:add_subcategory' %}",
+                type: 'POST',
+                data: {name: subcategoryName, category_id: categoryId, csrfmiddlewaretoken: '{{ csrf_token }}'},
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    // Add new option to select
+                    var newOption = $('<option value="' + response.subcategory.subcategory_id + '" data-category="' + response.subcategory.category_id + '">' + response.subcategory.name + '</option>');
+                    $('#id_subcategory').append(newOption);
+                    $('#id_subcategory').val(response.subcategory.subcategory_id);
+                    $('#id_subcategory').prop('disabled', false);
+                    
+                    // Add new badge to list
+                    var newBadge = $('<span class="badge bg-light text-dark border me-1 mb-1 subcategory-badge" data-id="' + response.subcategory.subcategory_id + '" data-category="' + response.subcategory.category_id + '">' + response.subcategory.name + '<a href="#" class="text-danger ms-1 delete-subcategory" data-id="' + response.subcategory.subcategory_id + '" title="Delete Subcategory" style="display:inline-block;"><i class="fas fa-trash"></i></a></span>');
+                    $('#subcategoryList').append(newBadge);
+                    
+                    $('#addSubcategoryError').text('');
+                },
+                error: function(xhr) {
+                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
+                    $('#addSubcategoryError').text(error);
+                }
+            });
+        } else if (!categoryId) {
+            $('#addSubcategoryError').text('Please select a category first.');
+        }
+    });
+
+    // Delete brand badge
+    $(document).on('click', '.delete-brand', function(e) {
+        e.preventDefault();
+        var brandId = $(this).data('id');
+        var $badge = $(this).closest('.brand-badge');
+        if (confirm('Are you sure you want to delete this brand?')) {
+            $.ajax({
+                url: "{% url 'products:delete_brand' 0 %}".replace('0', brandId),
+                type: 'POST',
+                data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    $badge.remove();
+                    // Remove option from dropdown
+                    $('#id_brand option[value="' + brandId + '"]').remove();
+                    if ($('#id_brand').val() == brandId) {
+                        $('#id_brand').val('');
+                    }
+                    $('#addBrandError').text('');
+                },
+                error: function(xhr) {
+                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
+                    $('#addBrandError').text(error);
+                }
+            });
+        }
+    });
+
+    // Delete category badge
+    $(document).on('click', '.delete-category', function(e) {
         e.preventDefault();
         var categoryId = $(this).data('id');
-        var $li = $(this).closest('li');
+        var $badge = $(this).closest('.category-badge');
         if (confirm('Are you sure you want to delete this category?')) {
             $.ajax({
                 url: "{% url 'products:delete_category' 0 %}".replace('0', categoryId),
@@ -438,35 +558,27 @@ $(function() {
                 data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 success: function(response) {
-                    $li.remove();
+                    $badge.remove();
+                    // Remove option from dropdown
+                    $('#id_category option[value="' + categoryId + '"]').remove();
                     if ($('#id_category').val() == categoryId) {
                         $('#id_category').val('');
-                        $('#selectedCategoryLabel').text('---------');
-                        $('#subcategoryDropdown').prop('disabled', true);
-                        $('#id_subcategory').val('');
-                        $('#selectedSubcategoryLabel').text('---------');
                     }
+                    $('#addCategoryError').text('');
                 },
                 error: function(xhr) {
-                    alert(xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.');
+                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
+                    $('#addCategoryError').text(error);
                 }
             });
         }
     });
 
-    // Custom dropdown logic for Subcategory
-    $('#subcategoryDropdownMenu').on('click', '.subcategory-item', function(e) {
+    // Delete subcategory badge
+    $(document).on('click', '.delete-subcategory', function(e) {
         e.preventDefault();
         var subcategoryId = $(this).data('id');
-        var subcategoryName = $(this).text();
-        $('#id_subcategory').val(subcategoryId);
-        $('#selectedSubcategoryLabel').text(subcategoryName);
-    });
-    // Delete subcategory in dropdown
-    $('#subcategoryDropdownMenu').on('click', '.delete-subcategory-in-dropdown', function(e) {
-        e.preventDefault();
-        var subcategoryId = $(this).data('id');
-        var $li = $(this).closest('li');
+        var $badge = $(this).closest('.subcategory-badge');
         if (confirm('Are you sure you want to delete this subcategory?')) {
             $.ajax({
                 url: "{% url 'products:delete_subcategory' 0 %}".replace('0', subcategoryId),
@@ -474,17 +586,89 @@ $(function() {
                 data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 success: function(response) {
-                    $li.remove();
+                    $badge.remove();
+                    // Remove option from dropdown
+                    $('#id_subcategory option[value="' + subcategoryId + '"]').remove();
                     if ($('#id_subcategory').val() == subcategoryId) {
                         $('#id_subcategory').val('');
-                        $('#selectedSubcategoryLabel').text('---------');
                     }
+                    $('#addSubcategoryError').text('');
                 },
                 error: function(xhr) {
-                    alert(xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.');
+                    var error = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'An error occurred.';
+                    $('#addSubcategoryError').text(error);
                 }
             });
         }
+    });
+
+    // Edit Product button click handler
+    $(document).on('click', '.edit-product-btn', function(e) {
+        e.preventDefault();
+        var productId = $(this).data('product-id');
+        // Fetch product data via AJAX
+        $.ajax({
+            url: "{% url 'products:get_product' 0 %}".replace('0', productId),
+            type: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function(response) {
+                if (response.success) {
+                    var p = response.product;
+                    $('#edit_product_id').val(p.product_id);
+                    $('#edit_name').val(p.name);
+                    $('#edit_brand').val(p.brand_id);
+                    $('#edit_category').val(p.category_id);
+                    $('#edit_subcategory').val(p.subcategory_id);
+                    $('#edit_market_price').val(p.market_price);
+                    $('#edit_sale_price').val(p.sale_price);
+                    $('#edit_unit').val(p.unit);
+                    $('#edit_stock_level').val(p.stock_level);
+                    $('#edit_rating').val(p.rating);
+                    $('#edit_description').val(p.description);
+                    $('#editProductErrors').html('');
+                    $('#editProductModal').modal('show');
+                } else {
+                    alert('Error loading product: ' + response.error);
+                }
+            },
+            error: function(xhr) {
+                alert('Error loading product.');
+            }
+        });
+    });
+
+    // Edit Product form submit handler
+    $('#editProductForm').on('submit', function(e) {
+        e.preventDefault();
+        var productId = $('#edit_product_id').val();
+        var formData = $(this).serialize();
+        $.ajax({
+            url: "{% url 'products:update_product' 0 %}".replace('0', productId),
+            type: 'POST',
+            data: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function(response) {
+                if (response.success) {
+                    $('#editProductModal').modal('hide');
+                    // Show notification
+                    $('<div class="alert alert-success position-fixed top-0 end-0 m-3" style="z-index:9999;">Product updated successfully!</div>')
+                        .appendTo('body').delay(2000).fadeOut(500, function() { $(this).remove(); });
+                    // Optionally, reload the page or update the row
+                    location.reload();
+                } else if (response.errors) {
+                    var errorHtml = '';
+                    for (var field in response.errors) {
+                        errorHtml += '<div>' + field + ': ' + response.errors[field] + '</div>';
+                    }
+                    $('#editProductErrors').html(errorHtml);
+                } else {
+                    $('#editProductErrors').html(response.error || 'An error occurred.');
+                }
+            },
+            error: function(xhr) {
+                $('#editProductErrors').html('An error occurred.');
+            }
+        });
     });
 });
 </script>

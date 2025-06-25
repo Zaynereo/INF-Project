@@ -60,7 +60,12 @@ def manage_products(request):
         cursor.execute("SELECT * FROM brand ORDER BY name")
         brand_columns = [col[0] for col in cursor.description]
         brands = [dict(zip(brand_columns, row)) for row in cursor.fetchall()]
-        cursor.execute("SELECT * FROM subcategory ORDER BY name")
+        cursor.execute("""
+            SELECT s.*, c.name as category_name 
+            FROM subcategory s 
+            JOIN category c ON s.category_id = c.category_id 
+            ORDER BY c.name, s.name
+        """)
         subcategory_columns = [col[0] for col in cursor.description]
         subcategories = [dict(zip(subcategory_columns, row)) for row in cursor.fetchall()]
 
@@ -228,38 +233,13 @@ def category_products(request, category_id):
     """
     A view to display products belonging to a specific category.
     """
-    category = Category.objects.get(pk=category_id)
-    products = Product.objects.filter(category=category)
-    
-    context = {
-        'category': category,
-        'products': products,
-    }
-    return render(request, 'category_products.html', context)
+    return render(request, 'category_products.html', {})
 
 def brand_products(request, brand_id):
     """
     A view to display products belonging to a specific brand.
     """
-    brand = Brand.objects.get(pk=brand_id)
-    products = Product.objects.filter(brand=brand)
-    
-    context = {
-        'brand': brand,
-        'products': products,
-    }
-    return render(request, 'brand_products.html', context)
-
-def product_detail(request, product_id):
-    """
-    A view to display the details of a single product.
-    """
-    product = Product.objects.get(pk=product_id)
-    
-    context = {
-        'product': product,
-    }
-    return render(request, 'product_detail.html', context)
+    return render(request, 'brand_products.html', {})
 
 def product_search(request):
     """
@@ -353,6 +333,43 @@ def add_brand(request):
 
 @admin_required
 @csrf_exempt
+def add_category(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Category name is required.'}, status=400)
+        with connection.cursor() as cursor:
+            # Check for duplicate
+            cursor.execute('SELECT category_id FROM category WHERE name = %s', [name])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'Category already exists.'}, status=400)
+            cursor.execute('INSERT INTO category (name) VALUES (%s) RETURNING category_id', [name])
+            category_id = cursor.fetchone()[0]
+        return JsonResponse({'success': True, 'category': {'category_id': category_id, 'name': name}})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def add_subcategory(request):
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        name = request.POST.get('name', '').strip()
+        category_id = request.POST.get('category_id', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Subcategory name is required.'}, status=400)
+        if not category_id:
+            return JsonResponse({'success': False, 'error': 'Category is required for subcategory.'}, status=400)
+        with connection.cursor() as cursor:
+            # Check for duplicate
+            cursor.execute('SELECT subcategory_id FROM subcategory WHERE name = %s AND category_id = %s', [name, category_id])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'Subcategory already exists in this category.'}, status=400)
+            cursor.execute('INSERT INTO subcategory (name, category_id) VALUES (%s, %s) RETURNING subcategory_id', [name, category_id])
+            subcategory_id = cursor.fetchone()[0]
+        return JsonResponse({'success': True, 'subcategory': {'subcategory_id': subcategory_id, 'name': name, 'category_id': category_id}})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
 def delete_brand(request, brand_id):
     if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
         with connection.cursor() as cursor:
@@ -389,3 +406,147 @@ def delete_subcategory(request, subcategory_id):
             cursor.execute('DELETE FROM subcategory WHERE subcategory_id = %s', [subcategory_id])
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def get_subcategories_for_category(request, category_id):
+    """Get all subcategories for a specific category"""
+    if request.method == 'GET' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT subcategory_id, name FROM subcategory WHERE category_id = %s ORDER BY name', [category_id])
+            subcategories = [{'subcategory_id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        return JsonResponse({'success': True, 'subcategories': subcategories})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def get_all_subcategories(request):
+    """Get all subcategories with their category information"""
+    if request.method == 'GET' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT s.subcategory_id, s.name, s.category_id, c.name as category_name 
+                FROM subcategory s 
+                JOIN category c ON s.category_id = c.category_id 
+                ORDER BY c.name, s.name
+            ''')
+            subcategories = [{'subcategory_id': row[0], 'name': row[1], 'category_id': row[2], 'category_name': row[3]} for row in cursor.fetchall()]
+        return JsonResponse({'success': True, 'subcategories': subcategories})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def update_subcategory_category(request, subcategory_id):
+    """Update a subcategory's category"""
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        category_id = request.POST.get('category_id', '').strip()
+        if not category_id:
+            return JsonResponse({'success': False, 'error': 'Category ID is required.'}, status=400)
+        
+        with connection.cursor() as cursor:
+            # Check if the subcategory exists
+            cursor.execute('SELECT name FROM subcategory WHERE subcategory_id = %s', [subcategory_id])
+            subcategory = cursor.fetchone()
+            if not subcategory:
+                return JsonResponse({'success': False, 'error': 'Subcategory not found.'}, status=400)
+            
+            # Check if the category exists
+            cursor.execute('SELECT name FROM category WHERE category_id = %s', [category_id])
+            category = cursor.fetchone()
+            if not category:
+                return JsonResponse({'success': False, 'error': 'Category not found.'}, status=400)
+            
+            # Check for duplicate subcategory name in the target category
+            cursor.execute('SELECT subcategory_id FROM subcategory WHERE name = %s AND category_id = %s AND subcategory_id != %s', [subcategory[0], category_id, subcategory_id])
+            if cursor.fetchone():
+                return JsonResponse({'success': False, 'error': 'A subcategory with this name already exists in the target category.'}, status=400)
+            
+            # Update the subcategory's category
+            cursor.execute('UPDATE subcategory SET category_id = %s WHERE subcategory_id = %s', [category_id, subcategory_id])
+            
+        return JsonResponse({'success': True, 'message': 'Subcategory linked successfully.'})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def get_product(request, product_id):
+    """Return product data as JSON for editing."""
+    if request.method == 'GET':
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT product_id, name, description, brand_id, category_id, subcategory_id, market_price, sale_price, unit, stock_level, rating
+                FROM product WHERE product_id = %s
+            ''', [product_id])
+            row = cursor.fetchone()
+            if not row:
+                return JsonResponse({'success': False, 'error': 'Product not found.'}, status=404)
+            columns = [col[0] for col in cursor.description]
+            product = dict(zip(columns, row))
+        return JsonResponse({'success': True, 'product': product})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+@admin_required
+@csrf_exempt
+def update_product(request, product_id):
+    """Update product data via AJAX POST."""
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute('''
+                        UPDATE product SET
+                            name = %s,
+                            description = %s,
+                            brand_id = %s,
+                            category_id = %s,
+                            subcategory_id = %s,
+                            market_price = %s,
+                            sale_price = %s,
+                            unit = %s,
+                            stock_level = %s,
+                            rating = %s
+                        WHERE product_id = %s
+                    ''', [
+                        data['name'],
+                        data['description'],
+                        data['brand'].brand_id if data['brand'] else None,
+                        data['category'].category_id if data['category'] else None,
+                        data['subcategory'].subcategory_id if data['subcategory'] else None,
+                        data['market_price'],
+                        data['sale_price'],
+                        data['unit'],
+                        data['stock_level'],
+                        data['rating'],
+                        product_id
+                    ])
+                return JsonResponse({'success': True})
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+def product_detail(request, product_id):
+    """
+    A view to display the details of a single product using raw SQL.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT p.*, b.name as brand_name, c.name as category_name, s.name as subcategory_name
+            FROM product p
+            LEFT JOIN brand b ON p.brand_id = b.brand_id
+            LEFT JOIN category c ON p.category_id = c.category_id
+            LEFT JOIN subcategory s ON p.subcategory_id = s.subcategory_id
+            WHERE p.product_id = %s
+        ''', [product_id])
+        row = cursor.fetchone()
+        if not row:
+            return render(request, '404.html', status=404)
+        columns = [col[0] for col in cursor.description]
+        product = dict(zip(columns, row))
+    context = {
+        'product': product,
+    }
+    return render(request, 'product_detail.html', context)
