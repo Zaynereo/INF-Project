@@ -230,16 +230,48 @@ def home(request):
     return render(request, 'home.html', context)
 
 def category_products(request, category_id):
-    """
-    A view to display products belonging to a specific category.
-    """
-    return render(request, 'category_products.html', {})
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT p.*, b.name as brand_name, c.name as category_name
+            FROM product p
+            LEFT JOIN brand b ON p.brand_id = b.brand_id
+            LEFT JOIN category c ON p.category_id = c.category_id
+            WHERE p.category_id = %s
+        ''', [category_id])
+        columns = [col[0] for col in cursor.description]
+        products = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        cursor.execute('SELECT * FROM category WHERE category_id = %s', [category_id])
+        category_row = cursor.fetchone()
+        category = dict(zip([col[0] for col in cursor.description], category_row)) if category_row else None
+
+    context = {
+        'products': products,
+        'category': category,
+    }
+    return render(request, 'products/category_products.html', context)
 
 def brand_products(request, brand_id):
-    """
-    A view to display products belonging to a specific brand.
-    """
-    return render(request, 'brand_products.html', {})
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT p.*, b.name as brand_name, c.name as category_name
+            FROM product p
+            LEFT JOIN brand b ON p.brand_id = b.brand_id
+            LEFT JOIN category c ON p.category_id = c.category_id
+            WHERE p.brand_id = %s
+        ''', [brand_id])
+        columns = [col[0] for col in cursor.description]
+        products = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        cursor.execute('SELECT * FROM brand WHERE brand_id = %s', [brand_id])
+        brand_row = cursor.fetchone()
+        brand = dict(zip([col[0] for col in cursor.description], brand_row)) if brand_row else None
+
+    context = {
+        'products': products,
+        'brand': brand,
+    }
+    return render(request, 'products/brand_products.html', context)
 
 def product_search(request):
     """
@@ -549,4 +581,4 @@ def product_detail(request, product_id):
     context = {
         'product': product,
     }
-    return render(request, 'product_detail.html', context)
+    return render(request, 'products/product_detail.html', context)

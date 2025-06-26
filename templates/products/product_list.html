@@ -42,7 +42,7 @@
                         
                         <div class="card-footer">
                             <div class="d-grid gap-2">
-                                <a href="{% url 'products:product_detail' product.pk %}" class="btn btn-outline-primary btn-sm">
+                                <a href="{% url 'products:product_detail' product.product_id %}" class="btn btn-outline-primary btn-sm">
                                     View Details
                                 </a>
                                 {% if product.is_in_stock %}
@@ -134,7 +134,7 @@
                         <ul class="list-unstyled">
                             {% for brand in brands %}
                                 <li>
-                                    <a href="{% url 'products:brand_products' brand.name|slugify %}" class="text-decoration-none">
+                                    <a href="{% url 'products:brand_products' brand.brand_id %}" class="text-decoration-none">
                                         {{ brand.name }}
                                     </a>
                                 </li>

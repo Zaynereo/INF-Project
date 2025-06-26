@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connection
-from .forms import RegistrationForm, LoginForm
+from .forms import RegistrationForm, LoginForm, ProfileForm
 
 def register_view(request):
     """
@@ -73,3 +73,40 @@ def logout_view(request):
     request.session.flush()
     messages.success(request, 'You have been successfully logged out.')
     return redirect('products:home')
+
+def profile_view(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        messages.error(request, 'You must be logged in to view your profile.')
+        return redirect('accounts:login')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT name, email, phone, password FROM customer WHERE customer_id = %s", [customer_id])
+        row = cursor.fetchone()
+        if not row:
+            messages.error(request, 'User not found.')
+            return redirect('products:home')
+        current_data = {'name': row[0], 'email': row[1], 'phone': row[2] or '', 'password': row[3]}
+
+    if request.method == 'POST':
+        form = ProfileForm(request.POST)
+        if form.is_valid():
+            name = form.cleaned_data['name']
+            email = form.cleaned_data['email']
+            phone = form.cleaned_data['phone']
+            password = form.cleaned_data['password']
+            # Only update password if provided
+            if password:
+                with connection.cursor() as cursor:
+                    cursor.execute("UPDATE customer SET name=%s, email=%s, phone=%s, password=%s WHERE customer_id=%s", [name, email, phone, password, customer_id])
+            else:
+                with connection.cursor() as cursor:
+                    cursor.execute("UPDATE customer SET name=%s, email=%s, phone=%s WHERE customer_id=%s", [name, email, phone, customer_id])
+            # Update session info
+            request.session['customer_name'] = name
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('accounts:profile')
+    else:
+        form = ProfileForm(initial={'name': current_data['name'], 'email': current_data['email'], 'phone': current_data['phone']})
+
+    return render(request, 'accounts/profile.html', {'form': form, 'user': current_data})
