@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Review{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Edit Your Review</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label for="{{ form.rating.id_for_label }}">Rating (0-5):</label>
+            {{ form.rating }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.review.id_for_label }}">Review:</label>
+            {{ form.review }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Review</button>
+        <a href="{% url 'products:product_detail' product_id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

@@ -5,9 +5,14 @@ from .models import Product, Category, Brand
 from django.contrib import messages
 from django.db import IntegrityError
 from django.http import JsonResponse
-from .forms import ProductForm
+from .forms import ProductForm, ReviewForm
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+
+from connection import get_mongo_connection # for mongo connection
+from bson.objectid import ObjectId
+from datetime import datetime, timezone
+from django.http import HttpResponseForbidden
 
 # Decorator to check for admin status
 def admin_required(view_func):
@@ -578,7 +583,75 @@ def product_detail(request, product_id):
             return render(request, '404.html', status=404)
         columns = [col[0] for col in cursor.description]
         product = dict(zip(columns, row))
-    context = {
-        'product': product,
-    }
-    return render(request, 'products/product_detail.html', context)
+
+    # mongo
+
+    db = get_mongo_connection()
+    product = Product.objects.get(pk=product_id)
+
+    if request.method == "POST":
+        if not request.session.get("customer_id"):
+            return redirect("accounts:login")
+        
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            db.ProductReviews.insert_one({
+                "product_id": int(product_id),
+                "customer_id": int(request.session["customer_id"]),
+                "rating": float(form.cleaned_data["rating"]),
+                "review": form.cleaned_data["review"],
+                "timestamp": datetime.now(timezone.utc)
+            })
+            return redirect("products:product_detail", product_id=product_id)
+    else:
+        form = ReviewForm()
+
+    reviews = list(db.ProductReviews.find({"product_id": int(product_id)}).sort("timestamp", -1)) # from postgresql
+
+    for r in reviews:
+        r["review_id"] = str(r["_id"])
+
+    return render(request, "products/product_detail.html", {
+        "product": product,
+        "reviews": reviews,
+        "form": form
+    })
+
+
+def edit_review(request, product_id, review_id):
+    db = get_mongo_connection()
+    review = db.ProductReviews.find_one({"_id": ObjectId(review_id)})
+
+    if not review:
+        return HttpResponseForbidden("Review not found.")
+    
+    if review["customer_id"] != request.session.get("customer_id"):
+        return HttpResponseForbidden("You are not allowed to edit this review.")
+    
+    if request.method == "POST":
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            db.ProductReviews.update_one(
+                {"_id": ObjectId(review_id)},
+                {"$set": {
+                    "rating": float(form.cleaned_data["rating"]),
+                    "review": form.cleaned_data["review"]
+                }}
+            )
+            return redirect("products:product_detail", product_id=product_id)
+    else:
+        form = ReviewForm(initial={
+            "rating": review["rating"],
+            "review": review["review"]
+        })
+    return render(request, "products/edit_review.html", {"form": form, "product_id": product_id})
+
+def delete_review(request, product_id, review_id):
+    db = get_mongo_connection()
+    review = db.ProductReviews.find_one({"_id": ObjectId(review_id)})
+
+    if not review or review["customer_id"] != request.session.get("customer_id"):
+        return HttpResponseForbidden("You are not allowed to delete this review.")
+    
+    db.ProductReviews.delete_one({"_id": ObjectId(review_id)})
+    return redirect("products:product_detail", product_id=product_id)

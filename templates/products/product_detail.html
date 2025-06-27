@@ -60,11 +60,15 @@
                 </p>
 
                 <!-- Add to Cart -->
-                <div class="d-grid gap-2">
+                 <div class="d-grid gap-2">
                     {% if product.stock_level > 0 %}
-                    <a href="#" class="btn btn-lg btn-success">
-                        <i class="fas fa-cart-plus me-2"></i>Add to Cart
-                    </a>
+                    <form method="post" action="{% url 'cart:add_to_cart' product.product_id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-lg btn-success">
+                            <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                        </button>
+                    </form>
                     {% else %}
                     <button class="btn btn-lg btn-secondary" disabled>Out of Stock</button>
                     {% endif %}
@@ -73,4 +77,57 @@
         </div>
     </div>
 </section>
+
+<!--Reviews-->
+<hr>
+<section class="mt-5">
+    <div class=""container">
+        <h3>Customer Reviews</h3>
+
+        {% for review in reviews %}
+            <div class="mb-4 border p-3 rounded">
+                <strong>Rating:</strong> {{ review.rating }} / 5<br>
+                <p>{{ review.review }}</p>
+                <small class="text-muted">{{ review.timestamp }}</small>
+
+                {% if review.customer_id == request.session.customer_id %} <!--Only owner sees edit/del butt-->
+                <div class="text-end mt-2">
+                    <a href="{% url 'products:edit_review' product.product_id review.review_id %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'products:delete_review' product.product_id review.review_id %}" class="btn btn-sm btn-danger">Delete</a>
+                </div>
+                {% endif %}
+            </div>
+        {% empty %}
+          <p>No reviews yet. Be the first to review this product!</p> 
+        {% endfor %} 
+    </div>
+</section>
+
+<hr>
+<section class="mt-5">
+  <div class="container">
+    <h4>Write a Review</h4>
+
+    {% if request.session.customer_id %}
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label for="{{ form.rating.id_for_label }}">Rating (0-5)</label>
+            {{ form.rating }}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.review.id_for_label }}">Your Review:</label>
+            {{ form.review }}
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Submit Review</button>
+      </form>
+    {% else %}
+      <p><a href="{% url 'accounts:login' %}">Login</a> to write a review.</p>
+    {% endif %}
+  </div>
+</section>
+
 {% endblock %} 

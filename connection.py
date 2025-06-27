@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 import os
 import sys
 
+from pymongo import MongoClient
+
+
 # Load environment variables from .env
 load_dotenv()
 
