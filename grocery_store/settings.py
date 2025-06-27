@@ -87,6 +87,10 @@ DATABASES = {
     }
 }
 
+# MongoDB Configuration
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'grocery_store')
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
