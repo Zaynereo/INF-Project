@@ -600,21 +600,40 @@ def product_detail(request, product_id):
                 "customer_id": int(request.session["customer_id"]),
                 "rating": float(form.cleaned_data["rating"]),
                 "review": form.cleaned_data["review"],
-                "timestamp": datetime.now(timezone.utc)
+                "timestamp": datetime.now(timezone.utc),
+                "votes": []
             })
             return redirect("products:product_detail", product_id=product_id)
     else:
         form = ReviewForm()
+    
+     #  Get sort option from query string (?sort=helpful)
+    sort_option = request.GET.get("sort", "recent")
+    
+    #  Call helper function to get all sorted review categories
+    customer_id = request.session.get("customer_id")
+    sorted_reviews = get_sorted_reviews(product_id, customer_id)
 
-    reviews = list(db.ProductReviews.find({"product_id": int(product_id)}).sort("timestamp", -1)) # from postgresql
+    #  Choose which set of reviews to show based on the option
+    if sort_option == "helpful":
+        reviews_to_show = sorted_reviews["most_helpful"]
+    elif sort_option == "lowest":
+        reviews_to_show = sorted_reviews["lowest_rated"]
+    elif sort_option == "recent":
+        reviews_to_show = sorted_reviews["most_recent"]
+    else:  # default is "all"
+        reviews_to_show = sorted_reviews["all"]
 
-    for r in reviews:
+    #  Add review_id for rendering buttons
+    for r in reviews_to_show:
         r["review_id"] = str(r["_id"])
 
+    #  Render with the selected review list
     return render(request, "products/product_detail.html", {
         "product": product,
-        "reviews": reviews,
-        "form": form
+        "reviews": reviews_to_show,
+        "form": form,
+        "sort": sort_option
     })
 
 
@@ -654,4 +673,120 @@ def delete_review(request, product_id, review_id):
         return HttpResponseForbidden("You are not allowed to delete this review.")
     
     db.ProductReviews.delete_one({"_id": ObjectId(review_id)})
+    return redirect("products:product_detail", product_id=product_id)
+
+def get_sorted_reviews(product_id, customer_id):
+    db = get_mongo_connection()
+
+    base_pipeline = [
+        { "$match": { "product_id": int(product_id) } },
+        {
+            "$addFields": {
+                "vote_score": { "$sum": "$votes.value" },
+                "upvotes": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$votes",
+                            "as": "v",
+                            "cond": { "$eq": ["$$v.value", 1] }
+                        }
+                    }
+                },
+                "downvotes": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$votes",
+                            "as": "v",
+                            "cond": { "$eq": ["$$v.value", -1] }
+                        }
+                    }
+                },
+                "user_voted": {
+                    "$in": [int(customer_id), { "$map": {
+                        "input": "$votes",
+                        "as": "v",
+                        "in": "$$v.user_id"
+                    }}]
+                }
+            }
+        }
+    ]
+
+    helpful = list(db.ProductReviews.aggregate(
+        base_pipeline + [
+            { "$match": { "vote_score": { "$gte": 1 } } },
+            { "$sort": { "vote_score": -1 } },
+            { "$limit": 3 }
+        ]
+    ))
+
+    recent = list(db.ProductReviews.aggregate(
+        base_pipeline + [
+            { "$sort": { "timestamp": -1 } },
+            { "$limit": 5 }
+        ]
+    ))
+
+    lowest = list(db.ProductReviews.aggregate(
+        base_pipeline + [
+            { "$sort": { "rating": 1 } },
+            { "$limit": 3 }
+        ]
+    ))
+
+    all_reviews = list(db.ProductReviews.aggregate(
+        base_pipeline + [
+            { "$sort": { "timestamp": -1 } }
+        ]
+    ))
+    
+    for r in helpful + recent + lowest + all_reviews:
+        r["review_id"] = str(r["_id"])
+
+    return {
+        "most_helpful": helpful,
+        "most_recent": recent,
+        "lowest_rated": lowest,
+        "all": all_reviews
+    }
+
+def vote_review(request, review_id):
+    if not request.session.get("customer_id"):
+        return redirect("accounts:login")
+    
+    db = get_mongo_connection()
+
+    user_id = int(request.session["customer_id"])
+    vote_value = int(request.POST.get("vote"))  # 1 or -1
+
+    review = db.ProductReviews.find_one({"_id": ObjectId(review_id)})
+    if not review:
+        return redirect("products:product_detail", product_id=review["product_id"])
+
+    product_id = review["product_id"]
+    votes = review.get("votes", [])
+
+    updated = False
+    new_votes = []
+    for v in votes:
+        if v.get("user_id") == user_id:
+            if v.get("value") != vote_value:
+                # Change vote (e.g., from upvote to downvote)
+                new_votes.append({"user_id": user_id, "value": vote_value})
+            else:
+                # Same vote again, skip adding (to prevent duplicate)
+                new_votes.append(v)
+            updated = True
+        else:
+            new_votes.append(v)
+
+    if not updated:
+        # User has not voted before → add new
+        new_votes.append({"user_id": user_id, "value": vote_value})
+
+    db.ProductReviews.update_one(
+        {"_id": ObjectId(review_id)},
+        {"$set": {"votes": new_votes}}
+    )
+
     return redirect("products:product_detail", product_id=product_id)

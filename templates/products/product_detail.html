@@ -4,6 +4,8 @@
 {% block title %}{{ product.name }}{% endblock %}
 
 {% block content %}
+{% load form_extras %}
+
 <section class="py-5">
     <div class="container">
         <div class="row">
@@ -79,16 +81,82 @@
 </section>
 
 <!--Reviews-->
-<hr>
 <section class="mt-5">
-    <div class=""container">
-        <h3>Customer Reviews</h3>
+    <div class="container">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Write a Review</h5>
+                {% if request.session.customer_id %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row mb-3">
+                            <label for="{{ form.rating.id_for_label }}" class="col-sm-2 col-form-label">Rating (0-5)</label>
+                            <div class="col-sm-10">
+                                {{ form.rating|add_class:"form-control w-25" }}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <label for="{{ form.review.id_for_label }}" class="col-sm-2 col-form-label">Your Review</label>
+                            <div class="col-sm-10">
+                                {{ form.review|add_class:"form-control" }}
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success">Submit Review</button>
+                        </div>
+                    </form>
+                {% else %}
+                <p><a href="{% url 'accounts:login' %}">Login</a> to write a review.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Sorting -->
+        <form method="get" class="mb-3">
+            <label for="sort" class="form-label">Sort By:</label>
+            <select name="sort" id="sort" class="form-select w-auto d-inline" onchange="this.form.submit()">
+                <option value="all" {% if sort == "all" or not sort %}selected{% endif %}>All Reviews</option>
+                <option value="recent" {% if sort == "recent" %}selected{% endif %}>Most Recent (5)</option>
+                <option value="helpful" {% if sort == "helpful" %}selected{% endif %}>Most Helpful (3)</option>
+                <option value="lowest" {% if sort == "lowest" %}selected{% endif %}>Lowest Rating (Ascd)</option>
+            </select>
+        </form>
 
         {% for review in reviews %}
             <div class="mb-4 border p-3 rounded">
                 <strong>Rating:</strong> {{ review.rating }} / 5<br>
                 <p>{{ review.review }}</p>
                 <small class="text-muted">{{ review.timestamp }}</small>
+                
+                <!-- Voting Section -->
+                <div class="mt-2">
+                    <form method="post" action="{% url 'products:vote_review' review.review_id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="vote" value="1">
+                        <button type="submit" class="btn btn-outline-success btn-sm">👍 Upvote</button>
+                    </form>
+
+                    <form method="post" action="{% url 'products:vote_review' review.review_id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="vote" value="-1">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">👎 Downvote</button>
+                    </form>
+
+                    <!-- Display upvote/downvote counts -->
+                    <span class="ms-2">
+                        👍 {{ review.upvotes|default:"0" }} |
+                        👎 {{ review.downvotes|default:"0" }}
+
+                        {% if review.user_voted %}
+                        <span class="badge bg-info text-dark ms-2">Voted</span>
+                        {% endif %}
+                    </span>
+                </div>
+
 
                 {% if review.customer_id == request.session.customer_id %} <!--Only owner sees edit/del butt-->
                 <div class="text-end mt-2">
@@ -101,33 +169,6 @@
           <p>No reviews yet. Be the first to review this product!</p> 
         {% endfor %} 
     </div>
-</section>
-
-<hr>
-<section class="mt-5">
-  <div class="container">
-    <h4>Write a Review</h4>
-
-    {% if request.session.customer_id %}
-      <form method="post">
-        {% csrf_token %}
-
-        <div class="mb-3">
-            <label for="{{ form.rating.id_for_label }}">Rating (0-5)</label>
-            {{ form.rating }}
-        </div>
-
-        <div class="mb-3">
-            <label for="{{ form.review.id_for_label }}">Your Review:</label>
-            {{ form.review }}
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Submit Review</button>
-      </form>
-    {% else %}
-      <p><a href="{% url 'accounts:login' %}">Login</a> to write a review.</p>
-    {% endif %}
-  </div>
 </section>
 
 {% endblock %} 

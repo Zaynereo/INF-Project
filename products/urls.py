@@ -27,4 +27,7 @@ urlpatterns = [
     #reviews
     path('product/<int:product_id>/review/edit/<review_id>/', views.edit_review, name='edit_review'),
     path('product/<int:product_id>/review/delete/<review_id>/', views.delete_review, name='delete_review'),
+    
+    path('vote/<str:review_id>/', views.vote_review, name='vote_review'),
+
 ]
