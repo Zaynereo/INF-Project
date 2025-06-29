@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load product_extras %}
 
 {% block title %}My Orders - Grocery Store{% endblock %}
 
@@ -13,7 +14,8 @@
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th>Order #</th>
+                                <th>#</th>
+                                <th>Order ID</th>
                                 <th>Date</th>
                                 <th>Total</th>
                                 <th>Status</th>
@@ -23,8 +25,9 @@
                         <tbody>
                             {% for order in orders %}
                             <tr>
-                                <td>{{ order.order_number }}</td>
-                                <td>{{ order.order_date }}</td>
+                                <td>{{ forloop.counter }}</td>
+                                <td>#{{ order.order_id }}</td>
+                                <td>{{ order.order_date|date:'Y-m-d H:i' }}</td>
                                 <td>${{ order.total_amount|floatformat:2 }}</td>
                                 <td>
                                     <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'confirmed' %}success{% elif order.status == 'shipped' %}info{% elif order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
@@ -32,9 +35,24 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="{% url 'orders:order_detail' order_id=order.order_id %}" class="btn btn-sm btn-outline-primary">
-                                        View Details
-                                    </a>
+                                    <button class="btn btn-sm btn-info" type="button"
+                                            onclick="toggleOrderDetails({{ order.order_id }})">
+                                        Show Details
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr id="order-details-{{ order.order_id }}" style="display:none;">
+                                <td colspan="6">
+                                    <strong>Products:</strong>
+                                    <ul class="mb-0">
+                                        {% for item in order_details|get_item:order.order_id %}
+                                        <li>
+                                            {{ item.name }} (x{{ item.quantity }}) - ${{ item.unit_price|floatformat:2 }}
+                                        </li>
+                                        {% empty %}
+                                        <li>No products found for this order.</li>
+                                        {% endfor %}
+                                    </ul>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -45,10 +63,60 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     You haven't placed any orders yet. 
-                    <a href="{% url 'products:product_list' %}" class="alert-link">Start shopping</a>!
+                    <a href="{% url 'products:home' %}" class="alert-link">Start shopping</a>!
                 </div>
+            {% endif %}
+            
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Order pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ previous_page_number }}">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Previous</span>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in total_pages|add:"-1"|add:"1"|make_list %}
+                        {% if forloop.counter == page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ forloop.counter }}</span>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ forloop.counter }}">{{ forloop.counter }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ next_page_number }}">Next</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
             {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+function toggleOrderDetails(orderId) {
+    var row = document.getElementById('order-details-' + orderId);
+    if (row.style.display === 'none') {
+        row.style.display = '';
+    } else {
+        row.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

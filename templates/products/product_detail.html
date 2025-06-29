@@ -128,9 +128,14 @@
 
         {% for review in reviews %}
             <div class="mb-4 border p-3 rounded">
-                <strong>Rating:</strong> {{ review.rating }} / 5<br>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong>Rating:</strong> {{ review.rating }} / 5
+                        <span class="text-muted ms-3">by {{ review.customer_name }}</span>
+                    </div>
+                    <small class="text-muted">{{ review.timestamp }}</small>
+                </div>
                 <p>{{ review.review }}</p>
-                <small class="text-muted">{{ review.timestamp }}</small>
                 
                 <!-- Voting Section -->
                 <div class="mt-2">

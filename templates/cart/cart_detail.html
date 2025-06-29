@@ -5,7 +5,12 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">My Shopping Cart</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Shopping Cart</h2>
+        <a href="{% url 'orders:order_list' %}" class="btn btn-outline-primary">
+            <i class="fas fa-history me-2"></i>Order History
+        </a>
+    </div>
     {% if cart_items %}
         <div class="card mb-4">
             <div class="card-body p-4">
@@ -50,9 +55,14 @@
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Cart Summary</h5>
-                        <p class="card-text mb-2">Total Items: <strong>{{ cart_total_items }}</strong></p>
-                        <p class="card-text mb-3">Total Price: <strong>${{ cart_total_price|floatformat:2 }}</strong></p>
-                        <a href="{% url 'orders:checkout' %}" class="btn btn-success w-100">Proceed to Checkout</a>
+                        <p class="card-text mb-2">Total Items: <strong>{{ item_count }}</strong></p>
+                        <p class="card-text mb-3">Total Price: <strong>${{ total_amount|floatformat:2 }}</strong></p>
+                        <form method="post" action="{% url 'cart:place_order' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-shopping-cart me-2"></i>Place Order
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

@@ -68,6 +68,14 @@
                                 Welcome, {{ request.session.customer_name }}!
                             </span>
                         </li>
+                        
+                        <!-- Cart Button -->
+                        <li class="nav-item">
+                            <a class="nav-link me-3" href="{% url 'cart:cart_detail' %}" title="Shopping Cart">
+                                <i class="fas fa-shopping-cart"></i> Cart
+                            </a>
+                        </li>
+                        
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'accounts:profile' %}" title="Profile">
                                 <i class="fas fa-user-circle"></i> Profile
@@ -107,6 +115,10 @@
                     <h5>Quick Links</h5>
                     <ul class="list-unstyled">
                         <li><a href="{% url 'products:home' %}" class="text-light">Products</a></li>
+                        {% if request.session.customer_id %}
+                            <li><a href="{% url 'cart:cart_detail' %}" class="text-light">Shopping Cart</a></li>
+                            <li><a href="{% url 'orders:order_list' %}" class="text-light">Order History</a></li>
+                        {% endif %}
                         {% if request.session.is_admin %}
                             <li><a href="{% url 'products:manage_products' %}" class="text-light">Manage Products</a></li>
                         {% endif %}

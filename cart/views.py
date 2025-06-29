@@ -1,15 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-#from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.db.models import Q
-#from .models import Cart, CartItem, Wishlist, Coupon, CouponUsage
 from connection import get_mongo_connection
 from products.models import Product
 from django.views import View
+from django.db import connection
 
 
 
@@ -200,24 +198,111 @@ class RemoveFromCartView(View): #single removal
         return redirect("cart:cart_detail")
     
 class ClearCartView(View): #remove all
-        
-        def dispatch(self, request, *args, **kwargs):
-            if not request.session.get("customer_id"):
-                return redirect("accounts:login")
-            return super().dispatch(request, *args, **kwargs)
 
-        #sets all items to empty thus empty list
-        def post(self, request, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("customer_id"):
+            return redirect("accounts:login")
+        return super().dispatch(request, *args, **kwargs)
 
-            customer_id = str(request.session.get("customer_id"))
-            if not customer_id:
-                return redirect("accounts:login")
+    def post(self, request, *args, **kwargs):
 
-            db = get_mongo_connection()
+        customer_id = str(request.session.get("customer_id"))
+        if not customer_id:
+            return redirect("accounts:login")
+
+        db = get_mongo_connection()
+        db["Carts"].update_one(
+            {"customer_id": customer_id, "status": "active"},
+            {"$set": {"items": []}}
+        )
+
+        messages.success(request, "Cart cleared successfully.")
+        return redirect("cart:cart_detail")
+
+class PlaceOrderView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("customer_id"):
+            return redirect("accounts:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        customer_id = str(request.session.get("customer_id"))
+        if not customer_id:
+            return redirect("accounts:login")
+
+        db = get_mongo_connection()
+        cart = db["Carts"].find_one({"customer_id": customer_id, "status": "active"})
+
+        if not cart or not cart.get("items"):
+            messages.error(request, "Your cart is empty. Cannot place order.")
+            return redirect("cart:cart_detail")
+
+        try:
+            # Create order in database
+            order_id = self.create_order_in_database(customer_id, cart)
+            
+            # Clear the cart
             db["Carts"].update_one(
                 {"customer_id": customer_id, "status": "active"},
                 {"$set": {"items": []}}
             )
 
-            messages.success(request, "Cart cleared successfully.")
+            messages.success(request, "Order placed successfully! Thank you for your purchase.")
+            return redirect("orders:order_list")
+            
+        except Exception as e:
+            messages.error(request, f"Error placing order: {str(e)}")
             return redirect("cart:cart_detail")
+
+    def create_order_in_database(self, customer_id, cart):
+        """Create order in PostgreSQL database and update stock levels"""
+        from datetime import datetime
+        
+        with connection.cursor() as cursor:
+            # Calculate totals
+            cart_items = cart.get("items", [])
+            subtotal = sum(item["price"] * item["quantity"] for item in cart_items)
+            total_amount = subtotal  # No tax or shipping for simplicity
+            
+            # Check stock levels before placing order
+            for item in cart_items:
+                cursor.execute("""
+                    SELECT stock_level FROM product WHERE product_id = %s
+                """, (int(item["product_id"]),))
+                current_stock = cursor.fetchone()
+                
+                if not current_stock:
+                    raise Exception(f"Product with ID {item['product_id']} not found")
+                
+                if current_stock[0] < item["quantity"]:
+                    raise Exception(f"Insufficient stock for product {item['name']}. Available: {current_stock[0]}, Requested: {item['quantity']}")
+            
+            # Insert order
+            cursor.execute("""
+                INSERT INTO ordertable (customer_id, order_date, total_amount)
+                VALUES (%s, %s, %s)
+                RETURNING order_id
+            """, (
+                int(customer_id), datetime.now(), total_amount
+            ))
+            
+            order_id = cursor.fetchone()[0]
+            
+            # Insert order items and update stock levels
+            for item in cart_items:
+                # Insert order item
+                cursor.execute("""
+                    INSERT INTO orderitem (order_id, product_id, quantity)
+                    VALUES (%s, %s, %s)
+                """, (
+                    order_id, int(item["product_id"]), item["quantity"]
+                ))
+                
+                # Update stock level
+                cursor.execute("""
+                    UPDATE product 
+                    SET stock_level = stock_level - %s 
+                    WHERE product_id = %s
+                """, (item["quantity"], int(item["product_id"])))
+            
+            return order_id

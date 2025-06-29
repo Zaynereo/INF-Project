@@ -232,6 +232,73 @@ def home(request):
         'min_price': min_price,
         'max_price': max_price,
     }
+    
+    # Get random testimonials from reviews
+    db = get_mongo_connection()
+    if db is not None:
+        # Get 5 random reviews with customer names and product names, excluding admin reviews
+        random_reviews = list(db.ProductReviews.aggregate([
+            { "$sample": { "size": 10 } },  # Sample more to account for admin filtering
+            { "$lookup": {
+                "from": "ProductReviews",
+                "localField": "product_id",
+                "foreignField": "product_id",
+                "as": "product_info"
+            }}
+        ]))
+        
+        # Get customer names and product names for these reviews
+        if random_reviews:
+            customer_ids = list(set([r["customer_id"] for r in random_reviews]))
+            product_ids = list(set([r["product_id"] for r in random_reviews]))
+            
+            with connection.cursor() as cursor:
+                # Get customer names, excluding admin users
+                if customer_ids:
+                    format_strings = ','.join(['%s'] * len(customer_ids))
+                    cursor.execute(f"""
+                        SELECT customer_id, name 
+                        FROM customer 
+                        WHERE customer_id IN ({format_strings}) AND (is_admin IS NULL OR is_admin = FALSE)
+                    """, customer_ids)
+                    customers = {row[0]: row[1] for row in cursor.fetchall()}
+                else:
+                    customers = {}
+                
+                # Get product names
+                if product_ids:
+                    format_strings = ','.join(['%s'] * len(product_ids))
+                    cursor.execute(f"""
+                        SELECT product_id, name 
+                        FROM product 
+                        WHERE product_id IN ({format_strings})
+                    """, product_ids)
+                    products_dict = {row[0]: row[1] for row in cursor.fetchall()}
+                else:
+                    products_dict = {}
+            
+            # Add customer names and product names to reviews, excluding admin reviews
+            testimonials = []
+            for review in random_reviews:
+                # Only include reviews from non-admin customers
+                if review['customer_id'] in customers:
+                    testimonials.append({
+                        'review': review.get('review', ''),
+                        'customer_name': customers.get(review['customer_id'], 'Anonymous'),
+                        'product_name': products_dict.get(review['product_id'], 'Product'),
+                        'rating': review.get('rating', 0)
+                    })
+                    
+                    # Stop when we have 5 testimonials
+                    if len(testimonials) >= 5:
+                        break
+            
+            context['testimonials'] = testimonials
+        else:
+            context['testimonials'] = []
+    else:
+        context['testimonials'] = []
+    
     return render(request, 'home.html', context)
 
 def category_products(request, category_id):
@@ -678,6 +745,19 @@ def delete_review(request, product_id, review_id):
 def get_sorted_reviews(product_id, customer_id):
     db = get_mongo_connection()
 
+    # Handle case when user is not logged in (customer_id is None)
+    user_voted_condition = {}
+    if customer_id is not None:
+        user_voted_condition = {
+            "user_voted": {
+                "$in": [int(customer_id), { "$map": {
+                    "input": "$votes",
+                    "as": "v",
+                    "in": "$$v.user_id"
+                }}]
+            }
+        }
+
     base_pipeline = [
         { "$match": { "product_id": int(product_id) } },
         {
@@ -701,13 +781,13 @@ def get_sorted_reviews(product_id, customer_id):
                         }
                     }
                 },
-                "user_voted": {
+                "user_voted": customer_id is not None and {
                     "$in": [int(customer_id), { "$map": {
                         "input": "$votes",
                         "as": "v",
                         "in": "$$v.user_id"
                     }}]
-                }
+                } or False
             }
         }
     ]
@@ -740,8 +820,26 @@ def get_sorted_reviews(product_id, customer_id):
         ]
     ))
     
+    # Get customer names for all reviews
+    customer_ids = list(set([r["customer_id"] for r in helpful + recent + lowest + all_reviews]))
+    
+    # Get customer data from PostgreSQL
+    with connection.cursor() as cursor:
+        if customer_ids:
+            format_strings = ','.join(['%s'] * len(customer_ids))
+            cursor.execute(f"""
+                SELECT customer_id, name 
+                FROM customer 
+                WHERE customer_id IN ({format_strings})
+            """, customer_ids)
+            customers = {row[0]: row[1] for row in cursor.fetchall()}
+        else:
+            customers = {}
+    
+    # Add customer names and review_id to all reviews
     for r in helpful + recent + lowest + all_reviews:
         r["review_id"] = str(r["_id"])
+        r["customer_name"] = customers.get(r["customer_id"], "Anonymous")
 
     return {
         "most_helpful": helpful,
