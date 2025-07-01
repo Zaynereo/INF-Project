@@ -175,6 +175,149 @@
         </div>
     </div>
 
+    <!-- Supplier Overview Card -->
+    <div class="card mt-5">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">Supplier Overview</h2>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+          <i class="fas fa-plus me-2"></i>Add New Supplier
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th>Supplier Name</th>
+                <th>Contact</th>
+                <th>Supplied Products</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for supplier in suppliers %}
+              <tr>
+                <td>{{ supplier.supplier_name }}</td>
+                <td>{{ supplier.contact }}</td>
+                <td>
+                  <table class="table table-sm mb-0 supplier-products-table">
+                    <thead>
+                      <tr>
+                        <th style="width:50%">Product</th>
+                        <th class="supplier-cost-price">Cost Price</th>
+                        <th style="min-width:110px">Supply Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for supply in supplier.supplies %}
+                      <tr>
+                        <td class="supplier-product-name" title="{{ supply.product_name }}">{{ supply.product_name }}</td>
+                        <td class="supplier-cost-price">${{ supply.cost_price|floatformat:2 }}</td>
+                        <td>{{ supply.supply_date|date:'Y-m-d' }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  <div class="mt-2">
+                    <button class="btn btn-outline-primary btn-sm manage-supplies-btn" data-supplier-id="{{ supplier.supplier_id }}" data-supplier-name="{{ supplier.supplier_name }}">
+                      <i class="fas fa-cogs me-1"></i>Manage Supplies
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-secondary me-1 edit-supplier-btn" data-supplier-id="{{ supplier.supplier_id }}" data-supplier-name="{{ supplier.supplier_name }}" data-supplier-contact="{{ supplier.contact }}">Edit</button>
+                  <button class="btn btn-sm btn-danger delete-supplier-btn" data-supplier-id="{{ supplier.supplier_id }}">Delete</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center">No suppliers found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Supplier Modal (step 2: real form) -->
+    <div class="modal fade" id="addSupplierModal" tabindex="-1" aria-labelledby="addSupplierModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="addSupplierForm" method="post" action="{% url 'products:add_supplier' %}">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="addSupplierModalLabel">Add New Supplier</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="supplier_name" class="form-label">Supplier Name</label>
+                <input type="text" class="form-control" id="supplier_name" name="supplier_name" required>
+              </div>
+              <div class="mb-3">
+                <label for="contact" class="form-label">Contact</label>
+                <input type="text" class="form-control" id="contact" name="contact" required>
+              </div>
+              <div class="mb-3">
+                <label for="product_id" class="form-label">Product</label>
+                <select class="form-select" id="product_id" name="product_id" required>
+                  <option value="">Select a product</option>
+                  {% for product in products %}
+                    <option value="{{ product.product_id }}">{{ product.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="cost_price" class="form-label">Cost Price</label>
+                <input type="number" step="0.01" class="form-control" id="cost_price" name="cost_price" required>
+              </div>
+              <div class="mb-3">
+                <label for="supply_date" class="form-label">Supply Date</label>
+                <input type="date" class="form-control" id="supply_date" name="supply_date" required>
+              </div>
+              <div id="addSupplierErrors" class="text-danger mt-2"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Add Supplier</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Supplier Modal -->
+    <div class="modal fade" id="editSupplierModal" tabindex="-1" aria-labelledby="editSupplierModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="editSupplierForm" method="post" action="">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="editSupplierModalLabel">Edit Supplier</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="edit_supplier_id" name="supplier_id">
+              <div class="mb-3">
+                <label for="edit_supplier_name" class="form-label">Supplier Name</label>
+                <input type="text" class="form-control" id="edit_supplier_name" name="supplier_name" required>
+              </div>
+              <div class="mb-3">
+                <label for="edit_contact" class="form-label">Contact</label>
+                <input type="text" class="form-control" id="edit_contact" name="contact" required>
+              </div>
+              <div id="editSupplierErrors" class="text-danger mt-2"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Product Modal -->
     <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
@@ -368,6 +511,88 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Supply Modal -->
+    <div class="modal fade" id="editSupplyModal" tabindex="-1" aria-labelledby="editSupplyModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="editSupplyForm" method="post" action="">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="editSupplyModalLabel">Edit Supply</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="edit_supply_id" name="supply_id">
+              <div class="mb-3">
+                <label class="form-label">Product</label>
+                <input type="text" class="form-control" id="edit_product_name" name="product_name" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="edit_cost_price" class="form-label">Cost Price</label>
+                <input type="number" step="0.01" class="form-control" id="edit_cost_price" name="cost_price" required>
+              </div>
+              <div class="mb-3">
+                <label for="edit_supply_date" class="form-label">Supply Date</label>
+                <input type="date" class="form-control" id="edit_supply_date" name="supply_date" required>
+              </div>
+              <div id="editSupplyErrors" class="text-danger mt-2"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Supplies Modal -->
+    <div class="modal fade" id="manageSuppliesModal" tabindex="-1" aria-labelledby="manageSuppliesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="manageSuppliesModalLabel">Manage Supplies for <span id="manageSuppliesSupplierName"></span></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="manageSuppliesTableWrapper"></div>
+            <hr>
+            <h6>Add New Supply</h6>
+            <form id="addSupplyForm" method="post" action="{% url 'products:add_supply' %}">
+              {% csrf_token %}
+              <input type="hidden" id="add_supply_supplier_id" name="supplier_id">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                  <label for="add_supply_product_id" class="form-label mb-0">Product</label>
+                  <select class="form-select" id="add_supply_product_id" name="product_id" required>
+                    <option value="">Select a product</option>
+                    {% for product in products %}
+                      <option value="{{ product.product_id }}">{{ product.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="add_supply_cost_price" class="form-label mb-0">Cost Price</label>
+                  <input type="number" step="0.01" class="form-control" id="add_supply_cost_price" name="cost_price" required>
+                </div>
+                <div class="col-md-3">
+                  <label for="add_supply_date" class="form-label mb-0">Supply Date</label>
+                  <input type="date" class="form-control" id="add_supply_date" name="supply_date" required>
+                </div>
+                <div class="col-md-1">
+                  <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+              </div>
+              <div id="addSupplyErrors" class="text-danger mt-2"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON data for suppliers -->
+    {{ suppliers|json_script:"all-suppliers-data" }}
 </div>
 {% endblock %}
 
@@ -670,6 +895,224 @@ $(function() {
             }
         });
     });
+
+    // AJAX form submission for Add Supplier
+    $('#addSupplierForm').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            success: function(response) {
+                $('#addSupplierModal').modal('hide');
+                location.reload();
+            },
+            error: function(xhr) {
+                var errors = xhr.responseJSON && xhr.responseJSON.errors ? xhr.responseJSON.errors : {'error': 'An error occurred.'};
+                var errorHtml = '';
+                for (var field in errors) {
+                    errorHtml += '<div>' + field + ': ' + errors[field] + '</div>';
+                }
+                $('#addSupplierErrors').html(errorHtml);
+            }
+        });
+    });
+
+    // Delete supplier with confirmation dialog
+    $(document).on('click', '.delete-supplier-btn', function() {
+        var supplierId = $(this).data('supplier-id');
+        if (confirm('Are you sure you want to delete this supplier and all their supplies?')) {
+            $.ajax({
+                url: '{% url "products:delete_supplier" 0 %}'.replace('0', supplierId),
+                type: 'POST',
+                data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('Failed to delete supplier.');
+                }
+            });
+        }
+    });
+
+    // Open Edit Supplier modal and populate fields
+    $(document).on('click', '.edit-supplier-btn', function() {
+        var supplierId = $(this).data('supplier-id');
+        var supplierName = $(this).data('supplier-name');
+        var contact = $(this).data('supplier-contact');
+        $('#edit_supplier_id').val(supplierId);
+        $('#edit_supplier_name').val(supplierName);
+        $('#edit_contact').val(contact);
+        // Set form action
+        $('#editSupplierForm').attr('action', '{% url "products:edit_supplier" 0 %}'.replace('0', supplierId));
+        $('#editSupplierErrors').html('');
+        $('#editSupplierModal').modal('show');
+    });
+
+    // AJAX form submission for Edit Supplier
+    $('#editSupplierForm').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            success: function(response) {
+                $('#editSupplierModal').modal('hide');
+                location.reload();
+            },
+            error: function(xhr) {
+                var errors = xhr.responseJSON && xhr.responseJSON.errors ? xhr.responseJSON.errors : {'error': 'An error occurred.'};
+                var errorHtml = '';
+                for (var field in errors) {
+                    errorHtml += '<div>' + field + ': ' + errors[field] + '</div>';
+                }
+                $('#editSupplierErrors').html(errorHtml);
+            }
+        });
+    });
+
+    // Open Edit Supply modal and populate fields
+    $(document).on('click', '.edit-supply-btn', function() {
+        var supplyId = $(this).data('supply-id');
+        var productName = $(this).data('product-name');
+        var costPrice = $(this).data('cost-price');
+        var supplyDate = $(this).data('supply-date');
+        $('#edit_supply_id').val(supplyId);
+        $('#edit_product_name').val(productName);
+        $('#edit_cost_price').val(costPrice);
+        $('#edit_supply_date').val(supplyDate);
+        // Set form action
+        $('#editSupplyForm').attr('action', '{% url "products:edit_supply" 0 %}'.replace('0', supplyId));
+        $('#editSupplyErrors').html('');
+        $('#editSupplyModal').modal('show');
+    });
+
+    // AJAX form submission for Edit Supply
+    $('#editSupplyForm').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            success: function(response) {
+                $('#editSupplyModal').modal('hide');
+                location.reload();
+            },
+            error: function(xhr) {
+                var errors = xhr.responseJSON && xhr.responseJSON.errors ? xhr.responseJSON.errors : {'error': 'An error occurred.'};
+                var errorHtml = '';
+                for (var field in errors) {
+                    errorHtml += '<div>' + field + ': ' + errors[field] + '</div>';
+                }
+                $('#editSupplyErrors').html(errorHtml);
+            }
+        });
+    });
+
+    // Delete supply with confirmation dialog
+    $(document).on('click', '.delete-supply-btn', function() {
+        var supplyId = $(this).data('supply-id');
+        if (confirm('Are you sure you want to delete this supply record?')) {
+            $.ajax({
+                url: '{% url "products:delete_supply" 0 %}'.replace('0', supplyId),
+                type: 'POST',
+                data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('Failed to delete supply.');
+                }
+            });
+        }
+    });
+
+    // Open Manage Supplies modal
+    $(document).on('click', '.manage-supplies-btn', function() {
+        var supplierId = $(this).data('supplier-id');
+        var supplierName = $(this).data('supplier-name');
+        $('#manageSuppliesSupplierName').text(supplierName);
+        $('#add_supply_supplier_id').val(supplierId);
+        // Use JSON data from json_script
+        var allSuppliers = JSON.parse(document.getElementById('all-suppliers-data').textContent);
+        var supplier = allSuppliers.find(s => s.supplier_id == supplierId);
+        var tableHtml = '<table class="table table-bordered table-sm align-middle"><thead><tr><th>Product</th><th>Cost Price</th><th>Supply Date</th><th>Actions</th></tr></thead><tbody>';
+        if (supplier && supplier.supplies.length > 0) {
+            supplier.supplies.forEach(function(supply) {
+                tableHtml += '<tr>' +
+                  '<td>' + supply.product_name + '</td>' +
+                  '<td class="supplier-cost-price">$' + parseFloat(supply.cost_price).toFixed(2) + '</td>' +
+                  '<td>' + (supply.supply_date ? supply.supply_date.substring(0, 10) : '') + '</td>' +
+                  '<td>' +
+                    '<button class="btn btn-sm btn-secondary me-1 edit-supply-btn" ' +
+                      'data-supply-id="' + supply.supply_id + '" ' +
+                      'data-product-name="' + supply.product_name + '" ' +
+                      'data-cost-price="' + supply.cost_price + '" ' +
+                      'data-supply-date="' + (supply.supply_date ? supply.supply_date.substring(0, 10) : '') + '">Edit</button>' +
+                    '<button class="btn btn-sm btn-danger delete-supply-btn" data-supply-id="' + supply.supply_id + '">Delete</button>' +
+                  '</td>' +
+                '</tr>';
+            });
+        } else {
+            tableHtml += '<tr><td colspan="4" class="text-center">No supplies found for this supplier.</td></tr>';
+        }
+        tableHtml += '</tbody></table>';
+        $('#manageSuppliesTableWrapper').html(tableHtml);
+        $('#manageSuppliesModal').modal('show');
+    });
+
+    // AJAX form submission for Add Supply (from Manage Supplies modal)
+    $('#addSupplyForm').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            success: function(response) {
+                $('#addSupplyErrors').html('');
+                location.reload();
+            },
+            error: function(xhr) {
+                var errors = xhr.responseJSON && xhr.responseJSON.errors ? xhr.responseJSON.errors : {'error': 'An error occurred.'};
+                var errorHtml = '';
+                for (var field in errors) {
+                    errorHtml += '<div>' + field + ': ' + errors[field] + '</div>';
+                }
+                $('#addSupplyErrors').html(errorHtml);
+            }
+        });
+    });
 });
 </script>
+<style>
+.supplier-products-table th,
+.supplier-products-table td {
+  vertical-align: middle;
+}
+.supplier-product-name {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.supplier-cost-price {
+  min-width: 90px;
+  text-align: right;
+}
+</style>
 {% endblock %} 

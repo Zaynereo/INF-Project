@@ -74,6 +74,33 @@ def manage_products(request):
         subcategory_columns = [col[0] for col in cursor.description]
         subcategories = [dict(zip(subcategory_columns, row)) for row in cursor.fetchall()]
 
+        # Fetch all suppliers and their supplies (with product info and cost price)
+        cursor.execute("""
+            SELECT s.supplier_id, s.name AS supplier_name, s.contact, 
+                   p.product_id, p.name AS product_name, sp.cost_price
+            FROM supplier s
+            JOIN supplies sp ON s.supplier_id = sp.supplier_id
+            JOIN product p ON sp.product_id = p.product_id
+            ORDER BY s.name, p.name
+        """)
+        supplier_rows = cursor.fetchall()
+        suppliers = {}
+        for row in supplier_rows:
+            supplier_id, supplier_name, contact, product_id, product_name, cost_price = row
+            if supplier_id not in suppliers:
+                suppliers[supplier_id] = {
+                    'supplier_id': supplier_id,
+                    'supplier_name': supplier_name,
+                    'contact': contact,
+                    'supplies': []
+                }
+            suppliers[supplier_id]['supplies'].append({
+                'product_id': product_id,
+                'product_name': product_name,
+                'cost_price': cost_price
+            })
+        suppliers = list(suppliers.values())
+
     # --- Order History Section ---
     # Filters
     order_customer = request.GET.get('order_customer', '')
@@ -150,6 +177,7 @@ def manage_products(request):
         'order_product': order_product,
         'order_start': order_start,
         'order_end': order_end,
+        'suppliers': suppliers,
     }
     return render(request, 'products/manage_products.html', context)
 
@@ -888,3 +916,166 @@ def vote_review(request, review_id):
     )
 
     return redirect("products:product_detail", product_id=product_id)
+
+@admin_required
+@csrf_exempt
+def add_supplier(request):
+    if request.method == 'POST':
+        supplier_name = request.POST.get('supplier_name', '').strip()
+        contact = request.POST.get('contact', '').strip()
+        product_id = request.POST.get('product_id', '').strip()
+        cost_price = request.POST.get('cost_price', '').strip()
+        supply_date = request.POST.get('supply_date', '').strip()
+        errors = {}
+        if not supplier_name:
+            errors['supplier_name'] = 'Supplier name is required.'
+        if not contact:
+            errors['contact'] = 'Contact is required.'
+        if not product_id:
+            errors['product_id'] = 'Product is required.'
+        if not cost_price:
+            errors['cost_price'] = 'Cost price is required.'
+        if not supply_date:
+            errors['supply_date'] = 'Supply date is required.'
+        if errors:
+            # For AJAX, return JSON
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
+            # For normal POST, re-render page with errors (not typical for modal)
+            messages.error(request, 'Please correct the errors in the form.')
+            return redirect('products:manage_products')
+        with connection.cursor() as cursor:
+            # Enforce unique supplier name
+            cursor.execute('SELECT supplier_id FROM supplier WHERE name = %s', [supplier_name])
+            row = cursor.fetchone()
+            if row:
+                supplier_id = row[0]
+            else:
+                cursor.execute('INSERT INTO supplier (name, contact) VALUES (%s, %s) RETURNING supplier_id', [supplier_name, contact])
+                supplier_id = cursor.fetchone()[0]
+            # Insert into supplies
+            cursor.execute('''
+                INSERT INTO supplies (supplier_id, product_id, supply_date, cost_price)
+                VALUES (%s, %s, %s, %s)
+            ''', [supplier_id, product_id, supply_date, cost_price])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')
+
+@admin_required
+@csrf_exempt
+def delete_supplier(request, supplier_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            # Delete all supplies for this supplier
+            cursor.execute('DELETE FROM supplies WHERE supplier_id = %s', [supplier_id])
+            # Delete the supplier
+            cursor.execute('DELETE FROM supplier WHERE supplier_id = %s', [supplier_id])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')
+
+@admin_required
+@csrf_exempt
+def edit_supplier(request, supplier_id):
+    if request.method == 'POST':
+        supplier_name = request.POST.get('supplier_name', '').strip()
+        contact = request.POST.get('contact', '').strip()
+        errors = {}
+        if not supplier_name:
+            errors['supplier_name'] = 'Supplier name is required.'
+        if not contact:
+            errors['contact'] = 'Contact is required.'
+        if errors:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
+            messages.error(request, 'Please correct the errors in the form.')
+            return redirect('products:manage_products')
+        with connection.cursor() as cursor:
+            # Enforce unique supplier name (cannot change to a name that already exists for another supplier)
+            cursor.execute('SELECT supplier_id FROM supplier WHERE name = %s AND supplier_id != %s', [supplier_name, supplier_id])
+            if cursor.fetchone():
+                errors['supplier_name'] = 'A supplier with this name already exists.'
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'errors': errors}, status=400)
+                messages.error(request, 'A supplier with this name already exists.')
+                return redirect('products:manage_products')
+            cursor.execute('UPDATE supplier SET name = %s, contact = %s WHERE supplier_id = %s', [supplier_name, contact, supplier_id])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')
+
+@admin_required
+@csrf_exempt
+def edit_supply(request, supply_id):
+    if request.method == 'POST':
+        cost_price = request.POST.get('cost_price', '').strip()
+        supply_date = request.POST.get('supply_date', '').strip()
+        errors = {}
+        if not cost_price:
+            errors['cost_price'] = 'Cost price is required.'
+        if not supply_date:
+            errors['supply_date'] = 'Supply date is required.'
+        if errors:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
+            messages.error(request, 'Please correct the errors in the form.')
+            return redirect('products:manage_products')
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE supplies SET cost_price = %s, supply_date = %s WHERE supply_id = %s', [cost_price, supply_date, supply_id])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')
+
+@admin_required
+@csrf_exempt
+def delete_supply(request, supply_id):
+    if request.method == 'POST':
+        with connection.cursor() as cursor:
+            cursor.execute('DELETE FROM supplies WHERE supply_id = %s', [supply_id])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')
+
+@admin_required
+@csrf_exempt
+def add_supply(request):
+    if request.method == 'POST':
+        supplier_id = request.POST.get('supplier_id', '').strip()
+        product_id = request.POST.get('product_id', '').strip()
+        cost_price = request.POST.get('cost_price', '').strip()
+        supply_date = request.POST.get('supply_date', '').strip()
+        errors = {}
+        if not supplier_id:
+            errors['supplier_id'] = 'Supplier is required.'
+        if not product_id:
+            errors['product_id'] = 'Product is required.'
+        if not cost_price:
+            errors['cost_price'] = 'Cost price is required.'
+        if not supply_date:
+            errors['supply_date'] = 'Supply date is required.'
+        if errors:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
+            messages.error(request, 'Please correct the errors in the form.')
+            return redirect('products:manage_products')
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                INSERT INTO supplies (supplier_id, product_id, supply_date, cost_price)
+                VALUES (%s, %s, %s, %s)
+            ''', [supplier_id, product_id, supply_date, cost_price])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('products:manage_products')
+    else:
+        return HttpResponseForbidden('Invalid request method.')

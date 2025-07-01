@@ -30,4 +30,11 @@ urlpatterns = [
     
     path('vote/<str:review_id>/', views.vote_review, name='vote_review'),
 
+    path('manage/add_supplier/', views.add_supplier, name='add_supplier'),
+    path('manage/delete_supplier/<int:supplier_id>/', views.delete_supplier, name='delete_supplier'),
+    path('manage/edit_supplier/<int:supplier_id>/', views.edit_supplier, name='edit_supplier'),
+    path('manage/edit_supply/<int:supply_id>/', views.edit_supply, name='edit_supply'),
+    path('manage/delete_supply/<int:supply_id>/', views.delete_supply, name='delete_supply'),
+    path('manage/add_supply/', views.add_supply, name='add_supply'),
+
 ]
