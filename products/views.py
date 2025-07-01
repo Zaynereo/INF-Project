@@ -77,7 +77,7 @@ def manage_products(request):
         # Fetch all suppliers and their supplies (with product info and cost price)
         cursor.execute("""
             SELECT s.supplier_id, s.name AS supplier_name, s.contact, 
-                   p.product_id, p.name AS product_name, sp.cost_price
+                   p.product_id, p.name AS product_name, sp.cost_price, sp.supply_id, sp.supply_date
             FROM supplier s
             JOIN supplies sp ON s.supplier_id = sp.supplier_id
             JOIN product p ON sp.product_id = p.product_id
@@ -86,7 +86,7 @@ def manage_products(request):
         supplier_rows = cursor.fetchall()
         suppliers = {}
         for row in supplier_rows:
-            supplier_id, supplier_name, contact, product_id, product_name, cost_price = row
+            supplier_id, supplier_name, contact, product_id, product_name, cost_price, supply_id, supply_date = row
             if supplier_id not in suppliers:
                 suppliers[supplier_id] = {
                     'supplier_id': supplier_id,
@@ -97,7 +97,9 @@ def manage_products(request):
             suppliers[supplier_id]['supplies'].append({
                 'product_id': product_id,
                 'product_name': product_name,
-                'cost_price': cost_price
+                'cost_price': cost_price,
+                'supply_id': supply_id,
+                'supply_date': supply_date
             })
         suppliers = list(suppliers.values())
 
