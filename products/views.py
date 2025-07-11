@@ -1,18 +1,12 @@
 from django.shortcuts import render, redirect
-from django.db.models import Q
 from django.db import connection
-from .models import Product, Category, Brand
 from django.contrib import messages
-from django.db import IntegrityError
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from .forms import ProductForm, ReviewForm
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
 from connection import get_mongo_connection # for mongo connection
+from datetime import datetime
 from bson.objectid import ObjectId
-from datetime import datetime, timezone
-from django.http import HttpResponseForbidden
 
 # Decorator to check for admin status
 def admin_required(view_func):
@@ -30,7 +24,10 @@ def manage_products(request):
     """
     sort_by = request.GET.get('sort', 'name_asc')
     search_query = request.GET.get('q', '')
+    product_page = int(request.GET.get('product_page', 1))
+    PRODUCTS_PER_PAGE = 10
     params = []
+    count_params = []
     query = """
         SELECT p.*, b.name as brand_name, c.name as category_name
         FROM product p
@@ -38,9 +35,18 @@ def manage_products(request):
         LEFT JOIN category c ON p.category_id = c.category_id
         WHERE p.is_active = TRUE
     """
+    count_query = """
+        SELECT COUNT(*)
+        FROM product p
+        LEFT JOIN brand b ON p.brand_id = b.brand_id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.is_active = TRUE
+    """
     if search_query:
         query += " AND (p.name ILIKE %s OR b.name ILIKE %s OR c.name ILIKE %s)"
+        count_query += " AND (p.name ILIKE %s OR b.name ILIKE %s OR c.name ILIKE %s)"
         params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
+        count_params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
     # Sorting
     if sort_by == 'stock_asc':
         query += " ORDER BY p.stock_level ASC"
@@ -54,7 +60,15 @@ def manage_products(request):
         query += " ORDER BY p.name DESC"
     else:  # name_asc
         query += " ORDER BY p.name ASC"
+    # Pagination for products
+    query += f" LIMIT {PRODUCTS_PER_PAGE} OFFSET %s"
+    params.append((product_page - 1) * PRODUCTS_PER_PAGE)
     with connection.cursor() as cursor:
+        # Get total count for pagination
+        cursor.execute(count_query, count_params)
+        total_products = cursor.fetchone()[0]
+        total_product_pages = (total_products + PRODUCTS_PER_PAGE - 1) // PRODUCTS_PER_PAGE
+        # Get paginated products
         cursor.execute(query, params)
         columns = [col[0] for col in cursor.description]
         products = [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -180,6 +194,8 @@ def manage_products(request):
         'order_start': order_start,
         'order_end': order_end,
         'suppliers': suppliers,
+        'total_product_pages': total_product_pages,
+        'product_page': product_page,
     }
     return render(request, 'products/manage_products.html', context)
 
@@ -684,7 +700,8 @@ def product_detail(request, product_id):
     # mongo
 
     db = get_mongo_connection()
-    product = Product.objects.get(pk=product_id)
+    if db is None:
+        return render(request, '404.html', status=404)
 
     if request.method == "POST":
         if not request.session.get("customer_id"):
@@ -697,7 +714,7 @@ def product_detail(request, product_id):
                 "customer_id": int(request.session["customer_id"]),
                 "rating": float(form.cleaned_data["rating"]),
                 "review": form.cleaned_data["review"],
-                "timestamp": datetime.now(timezone.utc),
+                "timestamp": datetime.now(),
                 "votes": []
             })
             return redirect("products:product_detail", product_id=product_id)
@@ -736,6 +753,8 @@ def product_detail(request, product_id):
 
 def edit_review(request, product_id, review_id):
     db = get_mongo_connection()
+    if db is None:
+        return HttpResponseForbidden("Database connection error.")
     review = db.ProductReviews.find_one({"_id": ObjectId(review_id)})
 
     if not review:
@@ -764,6 +783,8 @@ def edit_review(request, product_id, review_id):
 
 def delete_review(request, product_id, review_id):
     db = get_mongo_connection()
+    if db is None:
+        return HttpResponse("Database connection error.", status=403, content_type='text/plain')
     review = db.ProductReviews.find_one({"_id": ObjectId(review_id)})
 
     if not review or review["customer_id"] != request.session.get("customer_id"):
@@ -774,6 +795,8 @@ def delete_review(request, product_id, review_id):
 
 def get_sorted_reviews(product_id, customer_id):
     db = get_mongo_connection()
+    if db is None:
+        return {"most_helpful": [], "most_recent": [], "lowest_rated": [], "all": []}
 
     # Handle case when user is not logged in (customer_id is None)
     user_voted_condition = {}
@@ -883,6 +906,8 @@ def vote_review(request, review_id):
         return redirect("accounts:login")
     
     db = get_mongo_connection()
+    if db is None:
+        return HttpResponseForbidden("Database connection error.")
 
     user_id = int(request.session["customer_id"])
     vote_value = int(request.POST.get("vote"))  # 1 or -1

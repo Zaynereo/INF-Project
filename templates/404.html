@@ -11,10 +11,10 @@
                 <h2 class="mb-4">Oops! Page Not Found</h2>
                 <p class="lead mb-4">The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
                 <div class="d-flex justify-content-center gap-3">
-                    <a href="{{ url_for('main.home') }}" class="btn btn-success btn-lg px-4">
+                    <a href="{% url 'products:home' %}" class="btn btn-success btn-lg px-4">
                         <i class="fas fa-home me-2"></i>Go to Homepage
                     </a>
-                    <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-secondary btn-lg px-4">
+                    <a href="{% url 'products:home' %}" class="btn btn-outline-secondary btn-lg px-4">
                         <i class="fas fa-shopping-basket me-2"></i>Browse Products
                     </a>
                 </div>
